@@ -14,7 +14,7 @@
             t-on-keydown="_onKeydown"
         >
             <t t-if="composerView">
-                <t t-if="isDropZoneVisible.value">
+                <t t-if="isDropZoneVisible.value and composerView.hasDropZone">
                     <DropZone
                         class="o_Composer_dropZone"
                         t-on-o-dropzone-files-dropped="_onDropZoneFilesDropped"
@@ -28,6 +28,10 @@
                 />
                 <t t-if="hasHeader">
                     <div class="o_Composer_coreHeader text-truncate">
+                        <t t-if="composerView.threadView and composerView.threadView.replyingToMessageView">
+                            Replying to <b t-esc="composerView.threadView.replyingToMessageView.message.authorName"/>
+                            <i t-if="composerView.threadView.thread !== messaging.inbox" class="o_Composer_cancelReply fa fa-lg fa-times-circle rounded-circle p-0 ml-1" title="Stop replying" t-on-click="composerView.onClickStopReplying"/>
+                        </t>
                         <t t-if="props.hasThreadName">
                             <span class="o_Composer_threadName">
                                 on: <b><t t-esc="composerView.composer.activeThread.displayName"/></b>
@@ -94,25 +98,27 @@
                             </t>
                             <div class="o_Composer_primaryToolButtons" t-att-class="{ 'o-composer-is-compact': props.isCompact }">
                                 <Popover position="'top'" t-on-o-emoji-selection="_onEmojiSelection">
-                                    <!-- TODO FIXME o-open not possible to code due to https://github.com/odoo/owl/issues/693 -->
+                                    <!-- TODO FIXME o-open and aria-expanded not possible to code due to https://github.com/odoo/owl/issues/693 -->
                                     <button class="o_Composer_button o_Composer_buttonEmojis o_Composer_toolButton btn btn-light"
                                         t-att-class="{
                                             'o-open': false and state.displayed,
                                             'o-mobile': messaging.device.isMobile,
                                         }"
                                         t-on-keydown="_onKeydownEmojiButton"
+                                        aria-label="Emojis"
+                                        t-att-aria-expanded="false and (state.displayed ? 'true' : 'false')"
                                     >
-                                        <i class="fa fa-smile-o"/>
+                                        <i class="o_Composer_EmojiIcon fa fa-smile-o"/>
                                     </button>
                                     <t t-set="opened">
                                         <EmojisPopover t-ref="emojisPopover"/>
                                     </t>
                                 </Popover>
-                                <button class="o_Composer_button o_Composer_buttonAttachment o_Composer_toolButton btn btn-light fa fa-paperclip" t-att-class="{ 'o-mobile': messaging.device.isMobile }" title="Add attachment" type="button" t-on-click="_onClickAddAttachment"/>
+                                <button class="o_Composer_button o_Composer_buttonAttachment o_Composer_toolButton btn btn-light fa fa-paperclip" t-att-class="{ 'o-mobile': messaging.device.isMobile }" title="Add attachment" aria-label="Add attachment" type="button" t-on-click="_onClickAddAttachment"/>
                             </div>
                             <t t-if="props.isExpandable">
                                 <div class="o_Composer_secondaryToolButtons">
-                                    <button class="btn btn-light fa fa-expand o_Composer_button o_Composer_buttonFullComposer o_Composer_toolButton" t-att-class="{ 'o-mobile': messaging.device.isMobile }" title="Full composer" type="button" t-on-click="_onClickFullComposer"/>
+                                    <button class="btn btn-light fa fa-expand o_Composer_button o_Composer_buttonFullComposer o_Composer_toolButton" t-att-class="{ 'o-mobile': messaging.device.isMobile }" title="Full composer" aria-label="Full composer" type="button" t-on-click="_onClickFullComposer"/>
                                 </div>
                             </t>
                         </div>
@@ -149,8 +155,6 @@
             <t t-if="props.hasSendButton">
                 <button class="o_Composer_actionButton o_Composer_button o_Composer_buttonSend btn btn-primary"
                     t-att-class="{
-                        'fa': messaging.device.isMobile,
-                        'fa-paper-plane-o': messaging.device.isMobile,
                         'o-last': messaging.device.isMobile or !props.hasDiscardButton,
                         'o-composer-is-compact': props.isCompact,
                         'o-has-current-partner-avatar': props.hasCurrentPartnerAvatar,
@@ -159,7 +163,8 @@
                     type="button"
                     t-on-click="_onClickSend"
                 >
-                    <t t-if="!messaging.device.isMobile"><t t-if="composerView.composer.isLog">Log</t><t t-else="">Send</t></t>
+                    <t t-if="!messaging.device.isMobile"><t t-esc="composerView.sendButtonText"/></t>
+                    <t t-else=""><i class="fa fa-paper-plane-o"/></t>
                 </button>
             </t>
             <t t-if="!messaging.device.isMobile and props.hasDiscardButton">

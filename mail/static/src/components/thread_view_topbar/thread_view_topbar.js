@@ -14,6 +14,7 @@ export class ThreadViewTopbar extends Component {
     setup() {
         super.setup();
         useRefToModel({ fieldName: 'guestNameInputRef', modelName: 'mail.thread_view_topbar', propNameAsRecordLocalId: 'localId', refName: 'guestNameInput' });
+        useRefToModel({ fieldName: 'inviteButtonRef', modelName: 'mail.thread_view_topbar', propNameAsRecordLocalId: 'localId', refName: 'inviteButton' });
         useRefToModel({ fieldName: 'threadNameInputRef', modelName: 'mail.thread_view_topbar', propNameAsRecordLocalId: 'localId', refName: 'threadNameInput' });
         useRefToModel({ fieldName: 'threadDescriptionInputRef', modelName: 'mail.thread_view_topbar', propNameAsRecordLocalId: 'localId', refName: 'threadDescriptionInput' });
         useUpdateToModel({ methodName: 'onComponentUpdate', modelName: 'mail.thread_view_topbar', propNameAsRecordLocalId: 'localId' });
@@ -24,19 +25,9 @@ export class ThreadViewTopbar extends Component {
     //--------------------------------------------------------------------------
 
     /**
-     * @returns {string}
-     */
-    get avatarUrl() {
-        if (this.messaging.isCurrentUserGuest) {
-            return `/mail/channel/${this.threadViewTopBar.thread.id}/guest/${this.messaging.currentGuest.id}/avatar_128?unique=${this.messaging.currentGuest.name}`;
-        }
-        return this.messaging.currentPartner.avatarUrl;
-    }
-
-    /**
      * @returns {mail.thread_view_topbar}
      */
-    get threadViewTopBar() {
+    get threadViewTopbar() {
         return this.messaging && this.messaging.models['mail.thread_view_topbar'].get(this.props.localId);
     }
 
@@ -49,10 +40,10 @@ export class ThreadViewTopbar extends Component {
      * @param {MouseEvent} ev
      */
     async _onClickPhone(ev) {
-        if (this.threadViewTopBar.thread.hasPendingRtcRequest) {
+        if (this.threadViewTopbar.thread.hasPendingRtcRequest) {
             return;
         }
-        await this.threadViewTopBar.thread.toggleCall();
+        await this.threadViewTopbar.thread.toggleCall();
     }
 
     /**
@@ -60,10 +51,10 @@ export class ThreadViewTopbar extends Component {
      * @param {MouseEvent} ev
      */
     async _onClickCamera(ev) {
-        if (this.threadViewTopBar.thread.hasPendingRtcRequest) {
+        if (this.threadViewTopbar.thread.hasPendingRtcRequest) {
             return;
         }
-        await this.threadViewTopBar.thread.toggleCall({
+        await this.threadViewTopbar.thread.toggleCall({
             startWithVideo: true,
         });
     }

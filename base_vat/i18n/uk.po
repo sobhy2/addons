@@ -4,20 +4,35 @@
 # 
 # Translators:
 # Martin Trigaux, 2021
+# Alina Lisnenko <alina.lisnenko@erp.co.ua>, 2024
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~14.5\n"
+"Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-09-14 10:28+0000\n"
+"POT-Creation-Date: 2022-01-24 08:19+0000\n"
 "PO-Revision-Date: 2021-09-14 12:21+0000\n"
-"Last-Translator: Martin Trigaux, 2021\n"
-"Language-Team: Ukrainian (https://www.transifex.com/odoo/teams/41243/uk/)\n"
+"Last-Translator: Alina Lisnenko <alina.lisnenko@erp.co.ua>, 2024\n"
+"Language-Team: Ukrainian (https://app.transifex.com/odoo/teams/41243/uk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
 "Language: uk\n"
 "Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n % 10 == 1 && n % 100 != 11 ? 0 : n % 1 == 0 && n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 1 : n % 1 == 0 && (n % 10 ==0 || (n % 10 >=5 && n % 10 <=9) || (n % 100 >=11 && n % 100 <=14 )) ? 2: 3);\n"
+
+#. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid ""
+"10XXXXXXXXY or 20XXXXXXXXY or 15XXXXXXXXY or 16XXXXXXXXY or 17XXXXXXXXY"
+msgstr ""
+"10XXXXXXXXY або 20XXXXXXXXY або 15XXXXXXXXY або 16XXXXXXXXY або 17XXXXXXXXY"
+
+#. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid "310175397400003 [Fifteen digits, first and last digits should be \"3\"]"
+msgstr "310175397400003 [15 цифр, перша та остання повинні бути \"3\"]"
 
 #. module: base_vat
 #: model_terms:ir.ui.view,arch_db:base_vat.res_config_settings_view_form
@@ -36,6 +51,24 @@ msgid "<span class=\"o_vat_label\">VAT</span>"
 msgstr "<span class=\"o_vat_label\">ПДВ</span>"
 
 #. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid "AR200-5536168-2 or 20055361682"
+msgstr "AR200-5536168-2 або 20055361682"
+
+#. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid "CHE-123.456.788 TVA or CHE-123.456.788 MWST or CHE-123.456.788 IVA"
+msgstr "CHE-123.456.788 TVA або CHE-123.456.788 MWST або CHE-123.456.788 IVA"
+
+#. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid "CO213123432-1 or CO213.123.432-1"
+msgstr "CO213123432-1 або CO213.123.432-1"
+
+#. module: base_vat
 #: model:ir.model,name:base_vat.model_res_company
 msgid "Companies"
 msgstr "Компанії"
@@ -51,9 +84,33 @@ msgid "Contact"
 msgstr "Контакт"
 
 #. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid "DE123456788 or 12/345/67890"
+msgstr "DE123456788 або 12/345/67890"
+
+#. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid "DO1-01-85004-3 or 101850043"
+msgstr "DO1-01-85004-3 або 101850043"
+
+#. module: base_vat
 #: model:ir.model,name:base_vat.model_account_fiscal_position
 msgid "Fiscal Position"
 msgstr "Схема оподаткування"
+
+#. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid "GB123456782 or XI123456782"
+msgstr "GB123456782 або XI123456782"
+
+#. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid "HU12345676 or 12345678-1-11 or 8071592153"
+msgstr "HU12345676 або 12345678-1-11 або 8071592153"
 
 #. module: base_vat
 #: model_terms:ir.ui.view,arch_db:base_vat.res_config_settings_view_form
@@ -63,6 +120,40 @@ msgid ""
 msgstr ""
 "Якщо позначено цей пункт, ви не зможете зберегти контакт, якщо його номер "
 "ПДВ не може бути підтверджено європейською службою VIES."
+
+#. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid "MXGODE561231GR8 or GODE561231GR8"
+msgstr "MXGODE561231GR8 або GODE561231GR8"
+
+#. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid "TR1234567890 (VERGINO) or TR17291716060 (TCKIMLIKNO)"
+msgstr "TR1234567890 (VERGINO) або TR17291716060 (TCKIMLIKNO)"
+
+#. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid ""
+"The %(vat_label)s number [%(wrong_vat)s] for %(record_label)s does not seem to be valid. \n"
+"Note: the expected format is %(expected_format)s"
+msgstr ""
+"%(vat_label)s номер [%(wrong_vat)s] для %(record_label)s здається недійсним. \n"
+"Примітка: очікуваний формат %(expected_format)s"
+
+#. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
+#, python-format
+msgid ""
+"The %(vat_label)s number [%(wrong_vat)s] for %(record_label)s either failed "
+"the VIES VAT validation check or did not respect the expected format "
+"%(expected_format)s."
+msgstr ""
+"%(vat_label)s номер [%(wrong_vat)s] для %(record_label)s або не пройшов "
+"перевірку VIES VAT, або не відповідав очікуваному формату "
+"%(expected_format)s."
 
 #. module: base_vat
 #: model:ir.model.fields,help:base_vat.field_res_partner__vat
@@ -75,33 +166,26 @@ msgstr ""
 "оподаткуванню. Використовується в деяких офіційних звітах."
 
 #. module: base_vat
-#: code:addons/base_vat/models/res_partner.py:0
+#: code:addons/base_vat/models/account_fiscal_position.py:0
 #, python-format
 msgid ""
-"The VAT number [%(wrong_vat)s] for %(record_label)s either failed the VIES "
-"VAT validation check or did not respect the expected format "
-"%(expected_format)s."
-msgstr ""
-
-#. module: base_vat
-#: code:addons/base_vat/models/res_partner.py:0
-#, python-format
-msgid ""
-"The VAT number [%(wrong_vat)s] for record_label does not seem to be valid. \n"
-"Note: the expected format is %(expected_format)s"
+"The country detected for this foreign VAT number does not match any of the "
+"countries composing the country group set on this fiscal position."
 msgstr ""
 
 #. module: base_vat
 #: code:addons/base_vat/models/account_fiscal_position.py:0
 #, python-format
 msgid ""
-"The country detected for this foreign VAT number does not match the one set "
-"on this fiscal position."
+"The country of the foreign VAT number could not be detected. Please assign a"
+" country to the fiscal position or set a country group"
 msgstr ""
 
 #. module: base_vat
+#: code:addons/base_vat/models/res_partner.py:0
 #: model_terms:ir.ui.view,arch_db:base_vat.company_form_vat
 #: model_terms:ir.ui.view,arch_db:base_vat.view_partner_form
+#, python-format
 msgid "VAT"
 msgstr "ПДВ"
 
@@ -109,7 +193,7 @@ msgstr "ПДВ"
 #: model:ir.model.fields,field_description:base_vat.field_res_partner__vat
 #: model:ir.model.fields,field_description:base_vat.field_res_users__vat
 msgid "VAT/Tax ID"
-msgstr ""
+msgstr "ID ПДВ/податку"
 
 #. module: base_vat
 #: model:ir.model.fields,field_description:base_vat.field_res_company__vat_check_vies
@@ -126,10 +210,10 @@ msgstr "Перевірте номери ПДВ за допомогою євро�
 #: code:addons/base_vat/models/account_fiscal_position.py:0
 #, python-format
 msgid "fiscal position [%s]"
-msgstr ""
+msgstr "схема оподаткування [%s]"
 
 #. module: base_vat
 #: code:addons/base_vat/models/res_partner.py:0
 #, python-format
 msgid "partner [%s]"
-msgstr ""
+msgstr "партнер [%s]"

@@ -61,24 +61,20 @@ QUnit.module('Bus', {
         widget.call('bus_service', 'addChannel', 'lambda');
 
         pollPromise.resolve([{
-            id: 1,
-            channel: 'lambda',
             message: 'beta',
         }]);
         await testUtils.nextTick();
 
         pollPromise.resolve([{
-            id: 2,
-            channel: 'lambda',
             message: 'epsilon',
         }]);
         await testUtils.nextTick();
 
         assert.verifySteps([
             '/longpolling/poll - lambda',
-            'notification - lambda,beta',
+            'notification - beta',
             '/longpolling/poll - lambda',
-            'notification - lambda,epsilon',
+            'notification - epsilon',
             '/longpolling/poll - lambda',
         ]);
 
@@ -253,8 +249,8 @@ QUnit.module('Bus', {
 
         assert.verifySteps([
             'master - /longpolling/poll - lambda',
-            'master - notification - lambda,beta',
-            'slave - notification - lambda,beta',
+            'master - notification - beta',
+            'slave - notification - beta',
             'master - /longpolling/poll - lambda',
         ]);
 
@@ -348,11 +344,11 @@ QUnit.module('Bus', {
 
         assert.verifySteps([
             'master - /longpolling/poll - lambda',
-            'master - notification - lambda,beta',
-            'slave - notification - lambda,beta',
+            'master - notification - beta',
+            'slave - notification - beta',
             'master - /longpolling/poll - lambda',
             'slave - /longpolling/poll - lambda',
-            'slave - notification - lambda,gamma',
+            'slave - notification - gamma',
             'slave - /longpolling/poll - lambda',
         ]);
 
@@ -431,6 +427,55 @@ QUnit.module('Bus', {
         ]);
 
         testUtils.mock.unpatch(CrossTabBus);
+        parentTab1.destroy();
+        parentTab2.destroy();
+    });
+
+    QUnit.test('two tabs adding channels', async function (assert) {
+        assert.expect(4);
+        const parentTab1 = new Widget();
+        let pollPromise;
+        await testUtils.mock.addMockEnvironment(parentTab1, {
+            data: {},
+            services: {
+                local_storage: LocalStorageServiceMock,
+            },
+            mockRPC: function (route, args) {
+                if (route === '/longpolling/poll') {
+                    assert.step(args.channels.join())
+                    pollPromise = testUtils.makeTestPromise();
+                    pollPromise.abort = (function () {
+                        this.reject({message: 'XmlHttpRequestError abort'});
+                    }).bind(pollPromise);
+                    return pollPromise;
+                }
+                return this._super.apply(this, arguments);
+            }
+        });
+        const parentTab2 = new Widget();
+        await testUtils.mock.addMockEnvironment(parentTab2, {
+            data: {},
+            services: {
+                local_storage: LocalStorageServiceMock,
+            },
+            mockRPC: function (route, args) {
+                if (route === '/longpolling/poll') {
+                    throw new Error("slave tab should not use the polling route")
+                }
+                return this._super.apply(this, arguments);
+            }
+        });
+
+        const tab1 = new CrossTabBus(parentTab1);
+        const tab2 = new CrossTabBus(parentTab2);
+        tab1.addChannel("alpha");
+        await nextTick();
+        assert.verifySteps(["alpha"]);
+
+        tab2.addChannel("beta");
+        await nextTick();
+        assert.verifySteps(["alpha,beta"]);
+
         parentTab1.destroy();
         parentTab2.destroy();
     });

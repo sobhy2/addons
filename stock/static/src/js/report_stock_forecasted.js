@@ -35,6 +35,7 @@ const ReplenishReport = clientAction.extend({
         var loadWarehouses = this._rpc({
             model: 'report.stock.report_product_product_replenishment',
             method: 'get_warehouses',
+            context: this.context,
         }).then((res) => {
             this.warehouses = res;
             if (this.context.warehouse) {
@@ -90,6 +91,9 @@ const ReplenishReport = clientAction.extend({
         const graphController = await graphPromise;
         const iframeDoc = this.iframe.contentDocument;
         const reportGraphDiv = iframeDoc.querySelector(".o_report_graph");
+        if (!reportGraphDiv) {
+            return;
+        }
         dom.append(reportGraphDiv, graphController.el, {
             in_DOM: true,
             callbacks: [{ widget: graphController }],
@@ -97,7 +101,7 @@ const ReplenishReport = clientAction.extend({
         // Hack to put the res_model on the url. This way, the report always know on with res_model it refers.
         if (location.href.indexOf('active_model') === -1) {
             const url = window.location.href + `&active_model=${this.resModel}`;
-            window.history.pushState({}, "", url);
+            window.history.replaceState({}, "", url);
         }
     },
 
@@ -117,8 +121,12 @@ const ReplenishReport = clientAction.extend({
             modelName: model,
             noContentHelp: _t("Try to add some incoming or outgoing transfers."),
             withControlPanel: false,
+            context: {fill_temporal: false},
         };
-        const GraphView = viewRegistry.get("graph");
+        const viewArch = new DOMParser().parseFromString(viewInfo.arch, "text/xml");
+        const viewArchJSClass = viewArch.documentElement.getAttribute("js_class");
+        const viewRegistryKey = viewArchJSClass && viewRegistry.contains(viewArchJSClass) ? viewArchJSClass : "graph";
+        const GraphView = viewRegistry.get(viewRegistryKey);
         const graphView = new GraphView(viewInfo, params);
         const graphController = await graphView.getController(this);
         await graphController.appendTo(document.createDocumentFragment());
@@ -328,7 +336,8 @@ const ReplenishReport = clientAction.extend({
         return this._rpc( {
             model,
             args: [[modelId]],
-            method: 'do_unreserve'
+            method: 'do_unreserve',
+            context: { unreserve_parent: true },
         }).then(() => this._reloadReport());
     },
 

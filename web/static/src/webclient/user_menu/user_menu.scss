@@ -5,6 +5,9 @@
     height: 26px;
     width: 26px;
     object-fit: cover;
-    transform: translateY(-2px);
+    margin-right: 5px;
+  }
+  .oe_topbar_name {
+    max-width: 20rem;
   }
 }

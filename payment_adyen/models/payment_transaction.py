@@ -7,6 +7,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 from odoo.addons.payment import utils as payment_utils
+from odoo.addons.payment_adyen import utils as adyen_utils
 from odoo.addons.payment_adyen.const import CURRENCY_DECIMALS, RESULT_CODES_MAPPING
 
 _logger = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ class PaymentTransaction(models.Model):
             'access_token': payment_utils.generate_access_token(
                 processing_values['reference'],
                 converted_amount,
+                self.currency_id.id,
                 processing_values['partner_id']
             )
         }
@@ -75,6 +77,10 @@ class PaymentTransaction(models.Model):
             'recurringProcessingModel': 'Subscription',
             'shopperIP': payment_utils.get_customer_ip_address(),
             'shopperInteraction': 'ContAuth',
+            'shopperEmail': self.partner_email,
+            'shopperName': adyen_utils.format_partner_name(self.partner_name),
+            'telephoneNumber': self.partner_phone,
+            **adyen_utils.include_partner_addresses(self),
         }
         response_content = self.acquirer_id._adyen_make_request(
             url_field_name='adyen_checkout_api_url',
@@ -167,7 +173,13 @@ class PaymentTransaction(models.Model):
             source_tx = self.search(
                 [('acquirer_reference', '=', source_acquirer_reference), ('provider', '=', 'adyen')]
             )
-            tx = self._adyen_create_refund_tx_from_feedback_data(source_tx, data)
+            if source_tx:
+                # Manually create a refund transaction with a new reference. The reference of
+                # the refund transaction was personalized from Adyen and could be identical to
+                # that of an existing transaction.
+                tx = self._adyen_create_refund_tx_from_feedback_data(source_tx, data)
+            else:  # The refund was initiated for an unknown source transaction
+                pass  # Don't do anything with the refund notification
 
         if not tx:
             raise ValidationError(

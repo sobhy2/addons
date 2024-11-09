@@ -73,7 +73,8 @@ class Website(Home):
         # prefetch all menus (it will prefetch website.page too)
         top_menu = request.website.menu_id
 
-        homepage = request.website.homepage_id
+        homepage_id = request.website._get_cached('homepage_id')
+        homepage = homepage_id and request.env['website.page'].browse(homepage_id)
         if homepage and (homepage.sudo().is_visible or request.env.user.has_group('base.group_user')) and homepage.url != '/':
             return request.env['ir.http'].reroute(homepage.url)
 
@@ -151,8 +152,11 @@ class Website(Home):
         if lang == 'default':
             lang = request.website.default_lang_id.url_code
             r = '/%s%s' % (lang, r or '/')
-        redirect = werkzeug.utils.redirect(r or ('/%s' % lang), 303)
         lang_code = request.env['res.lang']._lang_get_code(lang)
+        # replace context with correct lang, to avoid that the url_for of request.redirect remove the
+        # default lang in case we switch from /fr -> /en with /en as default lang.
+        request.context = dict(request.context, lang=lang_code)
+        redirect = request.redirect(r or ('/%s' % lang))
         redirect.set_cookie('frontend_lang', lang_code)
         return redirect
 
@@ -198,7 +202,7 @@ class Website(Home):
             sitemaps.unlink()
 
             pages = 0
-            locs = request.website.with_user(request.website.user_id)._enumerate_pages()
+            locs = request.website.with_context(_filter_duplicate_pages=True).with_user(request.website.user_id)._enumerate_pages()
             while True:
                 values = {
                     'locs': islice(locs, 0, LOC_PER_SITEMAP),
@@ -233,12 +237,26 @@ class Website(Home):
 
         return request.make_response(content, [('Content-Type', mimetype)])
 
-    @http.route('/website/info', type='http', auth="public", website=True, sitemap=True)
+    def sitemap_website_info(env, rule, qs):
+        website = env['website'].get_current_website()
+        if not (
+            website.viewref('website.website_info', False).active
+            and website.viewref('website.show_website_info', False).active
+        ):
+            # avoid 404 or blank page in sitemap
+            return False
+
+        if not qs or qs.lower() in '/website/info':
+            yield {'loc': '/website/info'}
+
+    @http.route('/website/info', type='http', auth="public", website=True, sitemap=sitemap_website_info)
     def website_info(self, **kwargs):
-        try:
-            request.website.get_template('website.website_info').name
-        except Exception as e:
-            return request.env['ir.http']._handle_exception(e)
+        if not request.website.viewref('website.website_info', False).active:
+            # Deleted or archived view (through manual operation in backend).
+            # Don't check `show_website_info` view: still need to access if
+            # disabled to be able to enable it through the customize show.
+            raise request.not_found()
+
         Module = request.env['ir.module.module'].sudo()
         apps = Module.search([('state', '=', 'installed'), ('application', '=', True)])
         l10n = Module.search([('state', '=', 'installed'), ('name', '=like', 'l10n_%')])
@@ -254,10 +272,11 @@ class Website(Home):
         if not request.env.user.has_group('website.group_website_designer'):
             raise werkzeug.exceptions.NotFound()
         website_id = request.env['website'].get_current_website()
-        if website_id.configurator_done is False:
-            return request.render('website.website_configurator', {'lang': request.env.user.lang})
-        else:
+        if website_id.configurator_done:
             return request.redirect('/')
+        if request.env.lang != website_id.default_lang_id.code:
+            return request.redirect('/%s%s' % (website_id.default_lang_id.url_code, request.httprequest.path))
+        return request.render('website.website_configurator')
 
     @http.route(['/website/social/<string:social>'], type='http', auth="public", website=True, sitemap=False)
     def social(self, social, **kwargs):
@@ -271,7 +290,7 @@ class Website(Home):
         current_website = request.website
 
         matching_pages = []
-        for page in current_website.search_pages(needle, limit=int(limit)):
+        for page in current_website.with_context(_filter_duplicate_pages=True).search_pages(needle, limit=int(limit)):
             matching_pages.append({
                 'value': page['loc'],
                 'label': 'name' in page and '%s (%s)' % (page['loc'], page['name']) or page['loc'],
@@ -279,7 +298,7 @@ class Website(Home):
         matching_urls = set(map(lambda match: match['value'], matching_pages))
 
         matching_last_modified = []
-        last_modified_pages = current_website._get_website_pages(order='write_date desc', limit=5)
+        last_modified_pages = current_website.with_context(_filter_duplicate_pages=True)._get_website_pages(order='write_date desc', limit=5)
         for url, name in last_modified_pages.mapped(lambda p: (p.url, p.name)):
             if needle.lower() in name.lower() or needle.lower() in url.lower() and url not in matching_urls:
                 matching_last_modified.append({
@@ -291,7 +310,7 @@ class Website(Home):
         for name, url, mod in current_website.get_suggested_controllers():
             if needle.lower() in name.lower() or needle.lower() in url.lower():
                 module_sudo = mod and request.env.ref('base.module_%s' % mod, False).sudo()
-                icon = mod and "<img src='%s' width='24px' class='mr-2 rounded' /> " % (module_sudo and module_sudo.icon or mod) or ''
+                icon = mod and "<img src='%s' width='24px' height='24px' class='mr-2 rounded' /> " % (module_sudo and module_sudo.icon or mod) or ''
                 suggested_controllers.append({
                     'value': url,
                     'label': '%s%s (%s)' % (icon, url, name),
@@ -405,6 +424,31 @@ class Website(Home):
             results_data.sort(key=lambda r: r.get('name', ''), reverse='name desc' in order)
         results_data = results_data[:limit]
         result = []
+
+        def get_mapping_value(field_type, value, field_meta):
+            if field_type == 'text':
+                if value and field_meta.get('truncate', True):
+                    value = shorten(value, max_nb_chars, placeholder='...')
+                if field_meta.get('match') and value and term:
+                    pattern = '|'.join(map(re.escape, term.split()))
+                    if pattern:
+                        parts = re.split(f'({pattern})', value, flags=re.IGNORECASE)
+                        if len(parts) > 1:
+                            value = request.env['ir.ui.view'].sudo()._render_template(
+                                "website.search_text_with_highlight",
+                                {'parts': parts}
+                            )
+                            field_type = 'html'
+
+            if field_type not in ('image', 'binary') and ('ir.qweb.field.%s' % field_type) in request.env:
+                opt = {}
+                if field_type == 'monetary':
+                    opt['display_currency'] = options['display_currency']
+                elif field_type == 'html':
+                    opt['template_options'] = {}
+                value = request.env[('ir.qweb.field.%s' % field_type)].value_to_html(value, opt)
+            return escape(value)
+
         for record in results_data:
             mapping = record['_mapping']
             mapped = {
@@ -416,28 +460,14 @@ class Website(Home):
                     mapped[mapped_name] = ''
                     continue
                 field_type = field_meta.get('type')
-                if field_type == 'text':
-                    if value:
-                        value = shorten(value, max_nb_chars, placeholder='...')
-                    if field_meta.get('match') and value and term:
-                        pattern = '|'.join(map(re.escape, term.split()))
-                        if pattern:
-                            parts = re.split(f'({pattern})', value, flags=re.IGNORECASE)
-                            if len(parts) > 1:
-                                value = request.env['ir.ui.view'].sudo()._render_template(
-                                    "website.search_text_with_highlight",
-                                    {'parts': parts}
-                                )
-                                field_type = 'html'
-
-                if field_type not in ('image', 'binary') and ('ir.qweb.field.%s' % field_type) in request.env:
-                    opt = {}
-                    if field_type == 'monetary':
-                        opt['display_currency'] = options['display_currency']
-                    elif field_type == 'html':
-                        opt['template_options'] = {}
-                    value = request.env[('ir.qweb.field.%s' % field_type)].value_to_html(value, opt)
-                mapped[mapped_name] = escape(value)
+                if field_type == 'dict':
+                    # Map a field with multiple values, stored in a dict with values type: item_type
+                    item_type = field_meta.get('item_type')
+                    mapped[mapped_name] = {}
+                    for key, item in value.items():
+                        mapped[mapped_name][key] = get_mapping_value(item_type, item, field_meta)
+                else:
+                    mapped[mapped_name] = get_mapping_value(field_type, value, field_meta)
             result.append(mapped)
 
         return {
@@ -589,23 +619,48 @@ class Website(Home):
         template = template and dict(template=template) or {}
         page = request.env['website'].new_page(path, add_menu=add_menu, **template)
         url = page['url']
+        # In case the page is created through the 404 "Create Page" button, the
+        # URL may use special characters which are slugified on page creation.
+        # If that URL is also a menu, we update it accordingly.
+        # NB: we don't want to slugify on menu creation as it could redirect
+        # towards files (with spaces, apostrophes, etc.).
+        menu = request.env['website.menu'].search([('url', '=', '/' + path)])
+        if menu:
+            menu.page_id = page['page_id']
         if noredirect:
             return werkzeug.wrappers.Response(url, mimetype='text/plain')
 
         if ext_special_case:  # redirect non html pages to backend to edit
-            return werkzeug.utils.redirect('/web#id=' + str(page.get('view_id')) + '&view_type=form&model=ir.ui.view')
-        return werkzeug.utils.redirect(url + "?enable_editor=1")
+            return request.redirect('/web#id=' + str(page.get('view_id')) + '&view_type=form&model=ir.ui.view')
+        return request.redirect(url + "?enable_editor=1")
 
     @http.route("/website/get_switchable_related_views", type="json", auth="user", website=True)
     def get_switchable_related_views(self, key):
         views = request.env["ir.ui.view"].get_related_views(key, bundles=False).filtered(lambda v: v.customize_show)
+
+        # TODO remove in master: customize_show was kept by mistake on a view
+        # in website_crm. It was removed in stable at the same time this hack is
+        # introduced but would still be shown for existing customers if nothing
+        # else was done here. For users that disabled the view but were not
+        # supposed to be able to, we hide it too. The feature does not do much
+        # and is not a discoverable feature anyway, best removing the confusion
+        # entirely. If someone somehow wants that very technical feature, they
+        # can still enable the view again via the backend. We will also
+        # re-enable the view automatically in master.
+        crm_contactus_view = request.website.viewref('website_crm.contactus_form', raise_if_not_found=False)
+        views -= crm_contactus_view
+
         views = views.sorted(key=lambda v: (v.inherit_id.id, v.name))
         return views.with_context(display_website=False).read(['name', 'id', 'key', 'xml_id', 'active', 'inherit_id'])
 
     @http.route('/website/toggle_switchable_view', type='json', auth='user', website=True)
     def toggle_switchable_view(self, view_key):
         if request.website.user_has_groups('website.group_website_designer'):
-            request.website.viewref(view_key).toggle_active()
+            view = request.website.viewref(view_key)
+            # TODO: In master, set the priority in XML directly.
+            if view_key == 'website_blog.opt_blog_cover_post':
+                view.priority = 17
+            view.toggle_active()
         else:
             return werkzeug.exceptions.Forbidden()
 
@@ -671,8 +726,9 @@ class Website(Home):
         if not request.website.google_search_console:
             logger.warning('Google Search Console not enable')
             raise werkzeug.exceptions.NotFound()
+        gsc = request.website.google_search_console
+        trusted = gsc[gsc.startswith('google') and len('google'):gsc.endswith('.html') and -len('.html') or None]
 
-        trusted = request.website.google_search_console.lstrip('google').rstrip('.html')
         if key != trusted:
             if key.startswith(trusted):
                 request.website.sudo().google_search_console = "google%s.html" % key
@@ -692,32 +748,51 @@ class Website(Home):
     # Themes
     # ------------------------------------------------------
 
+    # TODO Remove this function in master because it only stays here for
+    # compatibility.
     def _get_customize_views(self, xml_ids):
-        View = request.env["ir.ui.view"].with_context(active_test=False)
-        if not xml_ids:
-            return View
-        domain = [("key", "in", xml_ids)] + request.website.website_domain()
-        return View.search(domain).filter_duplicate()
+        self._get_customize_data(self, xml_ids, True)
 
+    def _get_customize_data(self, keys, is_view_data):
+        model = 'ir.ui.view' if is_view_data else 'ir.asset'
+        Model = request.env[model].with_context(active_test=False)
+        if not keys:
+            return Model
+        domain = [("key", "in", keys)] + request.website.website_domain()
+        return Model.search(domain).filter_duplicate()
+
+    # TODO Remove this route in master because it only stays here for
+    # compatibility.
     @http.route(['/website/theme_customize_get'], type='json', auth='user', website=True)
     def theme_customize_get(self, xml_ids):
-        views = self._get_customize_views(xml_ids)
-        return views.filtered('active').mapped('key')
+        self.theme_customize_data_get(xml_ids, True)
 
+    @http.route(['/website/theme_customize_data_get'], type='json', auth='user', website=True)
+    def theme_customize_data_get(self, keys, is_view_data):
+        records = self._get_customize_data(keys, is_view_data)
+        return records.filtered('active').mapped('key')
+
+    # TODO Remove this route in Master because it only stays here for
+    # compatibility.
     @http.route(['/website/theme_customize'], type='json', auth='user', website=True)
     def theme_customize(self, enable=None, disable=None, reset_view_arch=False):
-        """
-        Enables and/or disables views according to list of keys.
+        self.theme_customize_data(True, enable, disable, reset_view_arch)
 
-        :param enable: list of views' keys to enable
-        :param disable: list of views' keys to disable
+    @http.route(['/website/theme_customize_data'], type='json', auth='user', website=True)
+    def theme_customize_data(self, is_view_data, enable=None, disable=None, reset_view_arch=False):
+        """
+        Enables and/or disables views/assets according to list of keys.
+
+        :param is_view_data: True = "ir.ui.view", False = "ir.asset"
+        :param enable: list of views/assets keys to enable
+        :param disable: list of views/assets keys to disable
         :param reset_view_arch: restore the default template after disabling
         """
-        disabled_views = self._get_customize_views(disable).filtered('active')
+        disabled_data = self._get_customize_data(disable, is_view_data).filtered('active')
         if reset_view_arch:
-            disabled_views.reset_arch(mode='hard')
-        disabled_views.write({'active': False})
-        self._get_customize_views(enable).filtered(lambda x: not x.active).write({'active': True})
+            disabled_data.reset_arch(mode='hard')
+        disabled_data.write({'active': False})
+        self._get_customize_data(enable, is_view_data).filtered(lambda x: not x.active).write({'active': True})
 
     @http.route(['/website/theme_customize_bundle_reload'], type='json', auth='user', website=True)
     def theme_customize_bundle_reload(self):

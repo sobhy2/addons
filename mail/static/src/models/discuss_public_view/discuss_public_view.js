@@ -2,7 +2,7 @@
 
 import { attr, one2one } from '@mail/model/model_field';
 import { registerNewModel } from '@mail/model/model_core';
-import { clear, insertAndReplace, link } from '@mail/model/model_field_command';
+import { clear, insertAndReplace, link, replace } from '@mail/model/model_field_command';
 
 function factory(dependencies) {
 
@@ -28,7 +28,7 @@ function factory(dependencies) {
             });
             if (this.isChannelTokenSecret) {
                 // Change the URL to avoid leaking the invitation link.
-                window.history.replaceState(window.history.state, null, `/discuss/channel/${this.channel.id}`);
+                window.history.replaceState(window.history.state, null, `/discuss/channel/${this.channel.id}${window.location.search}`);
             }
             if (this.channel.defaultDisplayMode === 'video_full_screen') {
                 await this.channel.toggleCall({ startWithVideo: true });
@@ -55,6 +55,10 @@ function factory(dependencies) {
             }
         }
 
+        _computeMessagingAsPublicView() {
+            return replace(this.messaging);
+        }
+
     }
 
     DiscussPublicView.fields = {
@@ -67,6 +71,11 @@ function factory(dependencies) {
         }),
         isChannelTokenSecret: attr({
             default: true,
+        }),
+        messagingAsPublicView: one2one('mail.messaging', {
+            compute: '_computeMessagingAsPublicView',
+            inverse: 'discussPublicView',
+            readonly: true,
         }),
         shouldAddGuestAsMemberOnJoin: attr({
             default: false,

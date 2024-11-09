@@ -22,7 +22,7 @@ const ReCaptcha = Class.extend({
      */
     loadLibs: function () {
         if (this._publicKey) {
-            this._recaptchaReady = ajax.loadJS(`https://www.recaptcha.net/recaptcha/api.js?render=${this._publicKey}`)
+            this._recaptchaReady = ajax.loadJS(`https://www.recaptcha.net/recaptcha/api.js?render=${encodeURIComponent(this._publicKey)}`)
                 .then(() => new Promise(resolve => window.grecaptcha.ready(() => resolve())));
             return this._recaptchaReady.then(() => !!document.querySelector('.grecaptcha-badge'));
         }
@@ -31,7 +31,7 @@ const ReCaptcha = Class.extend({
     /**
      * Returns an object with the token if reCaptcha call succeeds
      * If no key is set an object with a message is returned
-     * If an error occured an object with the error message is returned
+     * If an error occurred an object with the error message is returned
      *
      * @param {string} action
      * @returns {Promise|Object}

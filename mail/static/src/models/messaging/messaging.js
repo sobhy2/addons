@@ -3,7 +3,7 @@
 import { registerNewModel } from '@mail/model/model_core';
 import { attr, many2many, many2one, one2many, one2one } from '@mail/model/model_field';
 import { OnChange } from '@mail/model/model_onchange';
-import { insertAndReplace, replace, link, unlink } from '@mail/model/model_field_command';
+import { insertAndReplace, link, unlink } from '@mail/model/model_field_command';
 import { makeDeferred } from '@mail/utils/deferred/deferred';
 
 const { EventBus } = owl.core;
@@ -103,6 +103,8 @@ function factory(dependencies) {
                 },
             });
             if (this.messaging.device.isMobile) {
+                // When opening documents chat windows need to be closed
+                this.messaging.chatWindowManager.closeAll();
                 // messaging menu has a higher z-index than views so it must
                 // be closed to ensure the visibility of the view
                 this.messaging.messagingMenu.close();
@@ -163,7 +165,7 @@ function factory(dependencies) {
                 id: sessionId,
             });
             const focusedSessionId = this.focusedRtcSession && this.focusedRtcSession.id;
-            if (!sessionId || focusedSessionId === sessionId || !rtcSession.videoStream) {
+            if (!sessionId || focusedSessionId === sessionId) {
                 this.update({ focusedRtcSession: unlink() });
                 return;
             }
@@ -212,18 +214,6 @@ function factory(dependencies) {
         _computeIsNotificationPermissionDefault() {
             const browserNotification = this.env.browser.Notification;
             return browserNotification ? browserNotification.permission === 'default' : false;
-        }
-
-        /**
-         * @private
-         * @returns {mail.partner[]}
-         */
-        _computeRingingThreads() {
-            if (!this.messaging) {
-                return;
-            }
-            const threads = this.messaging.models['mail.thread'].all().filter(thread => !!thread.rtcInvitingSession);
-            return replace(threads);
         }
 
         /**
@@ -304,9 +294,11 @@ function factory(dependencies) {
             isCausal: true,
             readonly: true,
         }),
-        focusedRtcSession: one2one('mail.rtc_session', {
-            inverse: 'focusingMessaging',
+        discussPublicView: one2one('mail.discuss_public_view', {
+            inverse: 'messagingAsPublicView',
+            isCausal: true,
         }),
+        focusedRtcSession: one2one('mail.rtc_session'),
         /**
          * Mailbox History.
          */
@@ -395,10 +387,11 @@ function factory(dependencies) {
          */
         publicPartners: many2many('mail.partner'),
         /**
-         * Threads for which the current partner has a pending invitation
+         * Threads for which the current partner has a pending invitation.
+         * It is computed from the inverse relation for performance reasons.
          */
-        ringingThreads: many2many('mail.thread', {
-            compute: '_computeRingingThreads',
+        ringingThreads: one2many('mail.thread', {
+            inverse: 'messagingAsRingingThread',
         }),
         rtc: one2one('mail.rtc', {
             default: insertAndReplace(),

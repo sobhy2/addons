@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-
+from collections import defaultdict
 from datetime import timedelta
 
 from odoo import api, fields, models, _
@@ -12,6 +12,13 @@ from dateutil.relativedelta import relativedelta
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
+    # override existing field domains to prevent suboncontracting production lines from showing in Detailed Operations tab
+    move_line_nosuggest_ids = fields.One2many(
+        domain=['&', '|', ('location_dest_id.usage', '!=', 'production'), ('move_id.picking_code', '!=', 'outgoing'),
+                     '|', ('product_qty', '=', 0.0), '&', ('product_qty', '!=', 0.0), ('qty_done', '!=', 0.0)])
+    move_line_ids_without_package = fields.One2many(
+        domain=['&', '|', ('location_dest_id.usage', '!=', 'production'), ('move_id.picking_code', '!=', 'outgoing'),
+                     '|', ('package_level_id', '=', False), ('picking_type_entire_packs', '=', False)])
     display_action_record_components = fields.Selection(
         [('hide', 'Hide'), ('facultative', 'Facultative'), ('mandatory', 'Mandatory')],
         compute='_compute_display_action_record_components')
@@ -23,11 +30,11 @@ class StockPicking(models.Model):
             # Hide if not encoding state or it is not a subcontracting picking
             if picking.state in ('draft', 'cancel', 'done') or not picking._is_subcontract():
                 continue
-            subconctracted_moves = picking.move_lines.filtered(lambda m: m.is_subcontract)
-            if subconctracted_moves._subcontrating_should_be_record():
+            subcontracted_moves = picking.move_lines.filtered(lambda m: m.is_subcontract)
+            if subcontracted_moves._subcontrating_should_be_record():
                 picking.display_action_record_components = 'mandatory'
                 continue
-            if subconctracted_moves._subcontrating_can_be_record():
+            if subcontracted_moves._subcontrating_can_be_record():
                 picking.display_action_record_components = 'facultative'
 
     # -------------------------------------------------------------------------
@@ -39,11 +46,18 @@ class StockPicking(models.Model):
         for move in self.move_lines.filtered(lambda move: move.is_subcontract):
             # Auto set qty_producing/lot_producing_id of MO wasn't recorded
             # manually (if the flexible + record_component or has tracked component)
-            production = move._get_subcontract_production().filtered(lambda p: not p._has_been_recorded())
+            productions = move._get_subcontract_production()
+            recorded_productions = productions.filtered(lambda p: p._has_been_recorded())
+            recorded_qty = sum(recorded_productions.mapped('qty_producing'))
+            sm_done_qty = sum(productions._get_subcontract_move().mapped('quantity_done'))
+            rounding = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+            if float_compare(recorded_qty, sm_done_qty, precision_digits=rounding) >= 0:
+                continue
+            production = productions - recorded_productions
             if not production:
                 continue
             if len(production) > 1:
-                raise UserError("It shouldn't happen to have multiple production to record for the same subconctracted move")
+                raise UserError("It shouldn't happen to have multiple production to record for the same subcontracted move")
             # Manage additional quantities
             quantity_done_move = move.product_uom._compute_quantity(move.quantity_done, production.product_uom_id)
             if float_compare(production.product_qty, quantity_done_move, precision_rounding=production.product_uom_id.rounding) == -1:
@@ -58,6 +72,7 @@ class StockPicking(models.Model):
                     production.lot_producing_id = move_line.lot_id
                 production.qty_producing = move_line.product_uom_id._compute_quantity(move_line.qty_done, production.product_uom_id)
                 production._set_qty_producing()
+                production.subcontracting_has_been_recorded = True
                 if move_line != move.move_line_ids[-1]:
                     backorder = production._generate_backorder_productions(close_mo=False)
                     # The move_dest_ids won't be set because the _split filter out done move
@@ -67,6 +82,9 @@ class StockPicking(models.Model):
 
         for picking in self:
             productions_to_done = picking._get_subcontract_production()._subcontracting_filter_to_done()
+            if not productions_to_done:
+                continue
+            productions_to_done = productions_to_done.sudo()
             production_ids_backorder = []
             if not self.env.context.get('cancel_backorder'):
                 production_ids_backorder = productions_to_done.filtered(lambda mo: mo.state == "progress").ids
@@ -129,14 +147,33 @@ class StockPicking(models.Model):
 
     def _subcontracted_produce(self, subcontract_details):
         self.ensure_one()
-        for move, bom in subcontract_details:
-            mo = self.env['mrp.production'].with_company(move.company_id).create(self._prepare_subcontract_mo_vals(move, bom))
-            self.env['stock.move'].create(mo._get_moves_raw_values())
-            self.env['stock.move'].create(mo._get_moves_finished_values())
-            mo.date_planned_finished = move.date  # Avoid to have the picking late depending of the MO
-            mo.action_confirm()
 
+        group_move = defaultdict(list)
+        group_by_company = defaultdict(list)
+        for move, bom in subcontract_details:
+            if float_compare(move.product_qty, 0, precision_rounding=move.product_uom.rounding) <= 0:
+                # If a subcontracted amount is decreased, don't create a MO that would be for a negative value.
+                continue
+            mo_subcontract = self._prepare_subcontract_mo_vals(move, bom)
+            # Link the move to the id of the MO's procurement group
+            group_move[mo_subcontract['procurement_group_id']] = move
+            # Group the MO by company
+            group_by_company[move.company_id.id].append(mo_subcontract)
+
+        all_mo = set()
+        for company, group in group_by_company.items():
+            grouped_mo = self.env['mrp.production'].with_company(company).create(group)
+            all_mo.update(grouped_mo.ids)
+
+        all_mo = self.env['mrp.production'].browse(sorted(all_mo))
+        self.env['stock.move'].create(all_mo._get_moves_raw_values())
+        self.env['stock.move'].create(all_mo._get_moves_finished_values())
+        all_mo.action_confirm()
+
+        for mo in all_mo:
             # Link the finished to the receipt move.
+            move = group_move[mo.procurement_group_id.id][0]
             finished_move = mo.move_finished_ids.filtered(lambda m: m.product_id == move.product_id)
             finished_move.write({'move_dest_ids': [(4, move.id, False)]})
-            mo.action_assign()
+
+        all_mo.action_assign()

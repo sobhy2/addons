@@ -779,7 +779,11 @@ export class PivotModel extends Model {
         values.slice(0, values.length - 1).forEach(function (value) {
             tree = tree.directSubTrees.get(value);
         });
-        tree.directSubTrees.set(values[values.length - 1], {
+        const value = values[values.length - 1];
+        if (tree.directSubTrees.has(value)) {
+            return;
+        }
+        tree.directSubTrees.set(value, {
             root: {
                 labels: labels,
                 values: values,
@@ -1493,7 +1497,7 @@ export class PivotModel extends Model {
             const subTree = tree.directSubTrees.get(subTreeKey);
             if (!oldTree.directSubTrees.has(subTreeKey)) {
                 subTree.directSubTrees.clear();
-                delete subTreeKey.sortedKeys;
+                delete subTree.sortedKeys;
             } else {
                 const oldSubTree = oldTree.directSubTrees.get(subTreeKey);
                 this._pruneTree(subTree, oldSubTree);

@@ -3,21 +3,23 @@
 # 	* project_timesheet_holidays
 # 
 # Translators:
-# Martin Trigaux, 2019
-# Grzegorz Grzelak <grzegorz.grzelak@openglobe.pl>, 2019
-# Tomasz Leppich <t.leppich@gmail.com>, 2019
-# Piotr Szlązak <szlazakpiotr@gmail.com>, 2019
-# Paweł Wodyński <pw@myodoo.pl>, 2019
-# Maksym <ms@myodoo.pl>, 2019
+# Martin Trigaux, 2021
+# Grzegorz Grzelak <grzegorz.grzelak@openglobe.pl>, 2021
+# Tomasz Leppich <t.leppich@gmail.com>, 2021
+# Piotr Szlązak <szlazakpiotr@gmail.com>, 2021
+# Paweł Wodyński <pw@myodoo.pl>, 2021
+# Maksym <ms@myodoo.pl>, 2021
+# Karol Rybak <karolrybak85@gmail.com>, 2022
+# Tadeusz Karpiński <tadeuszkarpinski@gmail.com>, 2023
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~12.5\n"
+"Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-08-26 08:17+0000\n"
-"PO-Revision-Date: 2019-08-26 09:13+0000\n"
-"Last-Translator: Maksym <ms@myodoo.pl>, 2019\n"
-"Language-Team: Polish (https://www.transifex.com/odoo/teams/41243/pl/)\n"
+"POT-Creation-Date: 2024-08-14 15:43+0000\n"
+"PO-Revision-Date: 2021-09-14 12:25+0000\n"
+"Last-Translator: Tadeusz Karpiński <tadeuszkarpinski@gmail.com>, 2023\n"
+"Language-Team: Polish (https://app.transifex.com/odoo/teams/41243/pl/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
@@ -31,6 +33,7 @@ msgstr "Pozycja analityczna"
 
 #. module: project_timesheet_holidays
 #: model:ir.model.fields,field_description:project_timesheet_holidays.field_hr_leave__timesheet_ids
+#: model:ir.model.fields,field_description:project_timesheet_holidays.field_resource_calendar_leaves__timesheet_ids
 msgid "Analytic Lines"
 msgstr "Pozycje analityczne"
 
@@ -39,9 +42,12 @@ msgstr "Pozycje analityczne"
 #, python-format
 msgid ""
 "Both the internal project and task are required to generate a timesheet for "
-"the time off. If you don't want a timesheet, you should leave the internal "
-"project and task empty."
+"the time off %s. If you don't want a timesheet, you should leave the "
+"internal project and task empty."
 msgstr ""
+"Zarówno projekt wewnętrzny, jak i zadanie są wymagane do wygenerowania "
+"arkusza czasu pracy dla czasu wolnego %s. Jeśli nie chcesz arkusza czasu "
+"pracy, powinieneś pozostawić projekt wewnętrzny i zadanie puste."
 
 #. module: project_timesheet_holidays
 #: model:ir.model,name:project_timesheet_holidays.model_res_company
@@ -54,10 +60,16 @@ msgid "Config Settings"
 msgstr "Ustawienia konfiguracji"
 
 #. module: project_timesheet_holidays
-#: model:ir.model.fields,help:project_timesheet_holidays.field_res_company__leave_timesheet_project_id
-#: model:ir.model.fields,help:project_timesheet_holidays.field_res_config_settings__leave_timesheet_project_id
+#: model:ir.model.fields,help:project_timesheet_holidays.field_res_config_settings__internal_project_id
 msgid "Default project value for timesheet generated from time off type."
 msgstr ""
+"Domyślna wartość projektu dla arkusza czasu pracy generowanego na podstawie "
+"typu czasu wolnego."
+
+#. module: project_timesheet_holidays
+#: model:ir.model,name:project_timesheet_holidays.model_hr_employee
+msgid "Employee"
+msgstr "Pracownik"
 
 #. module: project_timesheet_holidays
 #: model:ir.model.fields,field_description:project_timesheet_holidays.field_hr_leave_type__timesheet_generate
@@ -65,17 +77,28 @@ msgid "Generate Timesheet"
 msgstr "Generuj Kartę czasu pracy"
 
 #. module: project_timesheet_holidays
+#: model:ir.model.fields,field_description:project_timesheet_holidays.field_account_analytic_line__global_leave_id
+msgid "Global Time Off"
+msgstr "Globalny czas wolny"
+
+#. module: project_timesheet_holidays
 #: model:ir.model.fields,help:project_timesheet_holidays.field_hr_leave_type__timesheet_generate
 msgid ""
 "If checked, when validating a time off, timesheet will be generated in the "
 "Vacation Project of the company."
 msgstr ""
+"Jeżeli jest zaznaczone, to przy zatwierdzaniu czasu wolnego zostanie "
+"wygenerowany timesheet w projekcie Wakacje w firmie."
 
 #. module: project_timesheet_holidays
-#: code:addons/project_timesheet_holidays/models/res_company.py:0
-#: model:ir.model.fields,field_description:project_timesheet_holidays.field_res_company__leave_timesheet_project_id
-#: model:ir.model.fields,field_description:project_timesheet_holidays.field_res_config_settings__leave_timesheet_project_id
+#: code:addons/project_timesheet_holidays/__init__.py:0
+#: code:addons/project_timesheet_holidays/__init__.py:0
 #, python-format
+msgid "Internal"
+msgstr "Wewnętrzne"
+
+#. module: project_timesheet_holidays
+#: model:ir.model.fields,field_description:project_timesheet_holidays.field_res_config_settings__internal_project_id
 msgid "Internal Project"
 msgstr "Projekt wewnętrzny"
 
@@ -91,20 +114,15 @@ msgid "Project"
 msgstr "Projekt"
 
 #. module: project_timesheet_holidays
-#: model_terms:ir.ui.view,arch_db:project_timesheet_holidays.res_config_settings_view_form
-msgid "Task"
-msgstr "Zadanie"
+#: model:ir.model,name:project_timesheet_holidays.model_resource_calendar_leaves
+msgid "Resource Time Off Detail"
+msgstr "Szczegóły czasu wolnego zasobów"
 
 #. module: project_timesheet_holidays
 #: model:ir.model.fields,field_description:project_timesheet_holidays.field_hr_leave_type__timesheet_task_id
-msgid "Task for timesheet"
-msgstr ""
-
-#. module: project_timesheet_holidays
-#: code:addons/project_timesheet_holidays/models/res_company.py:0
-#, python-format
-msgid "The Internal Project of a company should be in that company."
-msgstr ""
+#: model_terms:ir.ui.view,arch_db:project_timesheet_holidays.res_config_settings_view_form
+msgid "Task"
+msgstr "Zadanie"
 
 #. module: project_timesheet_holidays
 #: model:ir.model.fields,help:project_timesheet_holidays.field_hr_leave_type__timesheet_project_id
@@ -114,34 +132,40 @@ msgid ""
 msgstr ""
 
 #. module: project_timesheet_holidays
+#: code:addons/project_timesheet_holidays/__init__.py:0
 #: code:addons/project_timesheet_holidays/models/res_company.py:0
 #: model:ir.model,name:project_timesheet_holidays.model_hr_leave
 #, python-format
 msgid "Time Off"
-msgstr ""
+msgstr "Dni wolne"
+
+#. module: project_timesheet_holidays
+#: code:addons/project_timesheet_holidays/models/hr_holidays.py:0
+#: code:addons/project_timesheet_holidays/models/resource_calendar_leaves.py:0
+#, python-format
+msgid "Time Off (%s/%s)"
+msgstr "Czas wolny (%s/%s)"
 
 #. module: project_timesheet_holidays
 #: model:ir.model.fields,field_description:project_timesheet_holidays.field_res_company__leave_timesheet_task_id
 #: model:ir.model.fields,field_description:project_timesheet_holidays.field_res_config_settings__leave_timesheet_task_id
 msgid "Time Off Task"
-msgstr ""
+msgstr "Zadanie w czasie wolnym"
 
 #. module: project_timesheet_holidays
 #: model:ir.model,name:project_timesheet_holidays.model_hr_leave_type
 msgid "Time Off Type"
-msgstr ""
+msgstr "Przyczyna nieobecności"
 
 #. module: project_timesheet_holidays
 #: model_terms:ir.ui.view,arch_db:project_timesheet_holidays.hr_holiday_status_view_form_inherit
-msgid "Timesheet"
-msgstr "Karta pracy"
+msgid "Timesheets"
+msgstr "Karty pracy"
 
 #. module: project_timesheet_holidays
 #: code:addons/project_timesheet_holidays/models/account_analytic.py:0
 #, python-format
 msgid ""
-"You cannot delete timesheet lines attached to a leaves. Please cancel the "
-"leaves instead."
+"You cannot delete timesheets linked to time off. Please, cancel the time off"
+" instead."
 msgstr ""
-"Nie można usunąć linii karty pracy dołączonych do urlopów. Zamiast tego "
-"prosimy o anulowanie urlopów."

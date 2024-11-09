@@ -1,6 +1,15 @@
 odoo.define("website.tour.snippets_all_drag_and_drop", async function (require) {
 "use strict";
 
+const snippetsEditor = require('web_editor.snippet.editor');
+
+snippetsEditor.SnippetEditor.include({
+    removeSnippet: async function (shouldRecordUndo = true) {
+        await this._super(...arguments);
+        $('body').attr('test-dd-snippet-removed', true);
+    },
+});
+
 const tour = require("web_tour.tour");
 
 let snippetsNames = (new URL(document.location.href)).searchParams.get('snippets_names') || '';
@@ -25,13 +34,11 @@ for (const snippet of snippetsNames) {
         trigger: "we-button.oe_snippet_remove:last"
     }, {
         content: `click on 'BLOCKS' tab (${snippet})`,
+        extra_trigger: 'body[test-dd-snippet-removed]',
         trigger: ".o_we_add_snippet_btn",
         run: function (actions) {
-            // FIXME cannot find the reason why this setTimeout is needed to
-            // after reverting ab7508393376075f95d6dd5925e7f4462936d2, to check
-            // (this commit is however reverted temporarily until a better
-            // solution is found).
-            setTimeout(() => actions.auto(), 0);
+            $('body').removeAttr('test-dd-snippet-removed');
+            actions.auto();
         },
     }];
 
@@ -55,12 +62,12 @@ tour.register("snippets_all_drag_and_drop", {
 }, [
     {
         content: "Ensure snippets are actually passed at the test.",
-        trigger: "#oe_snippets",
+        trigger: "body",
         run: function () {
             // safety check, otherwise the test might "break" one day and
             // receive no steps. The test would then not test anything anymore
             // without us noticing it.
-            if (steps.lenth < 280) {
+            if (steps.length < 220) {
                 console.error("This test is not behaving as it should.");
             }
         },

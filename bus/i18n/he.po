@@ -3,40 +3,31 @@
 # 	* bus
 # 
 # Translators:
-# Fishfur A Banter <fishfurbanter@gmail.com>, 2019
-# Yihya Hugirat <hugirat@gmail.com>, 2019
-# שהאב חוסיין <shhab89@gmail.com>, 2019
-# hed shefetr <hed@laylinetech.com>, 2019
-# דודי מלכה <Dudimalka6@gmail.com>, 2019
+# Martin Trigaux, 2021
+# Fishfur A Banter <fishfurbanter@gmail.com>, 2021
+# Yihya Hugirat <hugirat@gmail.com>, 2021
+# ZVI BLONDER <ZVIBLONDER@gmail.com>, 2021
+# Lilach Gilliam <lilach.gilliam@gmail.com>, 2021
+# Ha Ketem <haketem@gmail.com>, 2022
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~12.5\n"
+"Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-08-26 08:16+0000\n"
-"PO-Revision-Date: 2019-08-26 09:09+0000\n"
-"Last-Translator: דודי מלכה <Dudimalka6@gmail.com>, 2019\n"
-"Language-Team: Hebrew (https://www.transifex.com/odoo/teams/41243/he/)\n"
+"POT-Creation-Date: 2024-08-14 15:43+0000\n"
+"PO-Revision-Date: 2021-09-14 12:21+0000\n"
+"Last-Translator: Ha Ketem <haketem@gmail.com>, 2022\n"
+"Language-Team: Hebrew (https://app.transifex.com/odoo/teams/41243/he/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
 "Language: he\n"
-"Plural-Forms: nplurals=4; plural=(n == 1 && n % 1 == 0) ? 0 : (n == 2 && n % 1 == 0) ? 1: (n % 10 == 0 && n % 1 == 0 && n > 10) ? 2 : 3;\n"
-
-#. module: bus
-#: model:ir.model.constraint,message:bus.constraint_bus_presence_bus_user_presence_unique
-msgid "A user can only have one IM status."
-msgstr "למשתמש יכול להיות רק סטאטוס IM אחד "
-
-#. module: bus
-#: model:ir.model,name:bus.model_ir_autovacuum
-msgid "Automatic Vacuum"
-msgstr "שואב אבק אוטומטי"
+"Plural-Forms: nplurals=3; plural=(n == 1 && n % 1 == 0) ? 0 : (n == 2 && n % 1 == 0) ? 1: 2;\n"
 
 #. module: bus
 #: model:ir.model.fields.selection,name:bus.selection__bus_presence__status__away
 msgid "Away"
-msgstr ""
+msgstr "רחוק"
 
 #. module: bus
 #: model:ir.model.fields,field_description:bus.field_bus_bus__channel
@@ -46,12 +37,12 @@ msgstr "ערוץ"
 #. module: bus
 #: model:ir.model,name:bus.model_bus_bus
 msgid "Communication Bus"
-msgstr ""
+msgstr "אפיק תקשורת"
 
 #. module: bus
 #: model:ir.model,name:bus.model_res_partner
 msgid "Contact"
-msgstr "איש קשר"
+msgstr "צור קשר"
 
 #. module: bus
 #: model:ir.model.fields,field_description:bus.field_bus_bus__create_uid
@@ -67,7 +58,7 @@ msgstr "נוצר ב-"
 #: model:ir.model.fields,field_description:bus.field_bus_bus__display_name
 #: model:ir.model.fields,field_description:bus.field_bus_presence__display_name
 msgid "Display Name"
-msgstr "הצג שם"
+msgstr "שם לתצוגה"
 
 #. module: bus
 #: model:ir.model.fields,field_description:bus.field_bus_bus__id
@@ -80,7 +71,7 @@ msgstr "תעודה מזהה"
 #: model:ir.model.fields,field_description:bus.field_res_partner__im_status
 #: model:ir.model.fields,field_description:bus.field_res_users__im_status
 msgid "IM Status"
-msgstr ""
+msgstr "סטטוס IM"
 
 #. module: bus
 #: model:ir.model.fields,field_description:bus.field_bus_bus____last_update
@@ -91,7 +82,7 @@ msgstr "שינוי אחרון ב"
 #. module: bus
 #: model:ir.model.fields,field_description:bus.field_bus_presence__last_poll
 msgid "Last Poll"
-msgstr ""
+msgstr "סקר אחרון"
 
 #. module: bus
 #: model:ir.model.fields,field_description:bus.field_bus_presence__last_presence
@@ -116,12 +107,27 @@ msgstr "הודעה"
 #. module: bus
 #: model:ir.model.fields.selection,name:bus.selection__bus_presence__status__offline
 msgid "Offline"
-msgstr "לא מחובר"
+msgstr "לא מקוון"
 
 #. module: bus
 #: model:ir.model.fields.selection,name:bus.selection__bus_presence__status__online
 msgid "Online"
-msgstr "מחובר"
+msgstr "מקוון"
+
+#. module: bus
+#. openerp-web
+#: code:addons/bus/static/src/js/services/assets_watchdog_service.js:0
+#: code:addons/bus/static/src/js/services/assets_watchdog_service.js:0
+#, python-format
+msgid "Refresh"
+msgstr "רענן"
+
+#. module: bus
+#. openerp-web
+#: code:addons/bus/static/src/js/services/assets_watchdog_service.js:0
+#, python-format
+msgid "The page appears to be out of date."
+msgstr "נראה שהדף הינו מיושן."
 
 #. module: bus
 #: model:ir.model,name:bus.model_bus_presence
@@ -138,4 +144,4 @@ msgstr "משתמשים"
 #: code:addons/bus/controllers/main.py:0
 #, python-format
 msgid "bus.Bus not available in test mode"
-msgstr ""
+msgstr "bus.Bus לא זמין במצב נסיון"

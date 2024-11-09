@@ -6,11 +6,14 @@ from datetime import datetime, timedelta
 from odoo import Command
 from odoo.addons.event_booth.tests.common import TestEventBoothCommon
 from odoo.fields import Datetime as FieldsDatetime
-from odoo.tests.common import users, Form
+from odoo.tests.common import users, Form, tagged
+from odoo.tools import mute_logger
 
 
+@tagged('post_install', '-at_install')
 class TestEventData(TestEventBoothCommon):
 
+    @mute_logger('odoo.models.unlink')
     @users('user_eventmanager')
     def test_event_configuration_booths_from_type(self):
         """ Test data computation (related to booths) of event coming from its event.type template. """
@@ -78,14 +81,13 @@ class TestEventData(TestEventBoothCommon):
         self.assertEqual(event.event_booth_ids[1].message_partner_ids, self.env['res.partner'])
 
         # change event type to one using booths: include event type booths and keep reserved booths
-        event_form = Form(event)
-        event_form.event_type_id = event_type_wbooths
-        self.assertEqual(event_form.event_booth_count, 3)
+        with Form(event) as event_form:
+            event_form.event_type_id = event_type_wbooths
+        self.assertEqual(event.event_booth_count, 3)
         self.assertEqual(
-            set(r['name'] for r in event_form.event_booth_ids._records),
+            set(r['name'] for r in event.event_booth_ids),
             set(('Custom Standard Booth 2', 'Standard Booth', 'Premium Booth')),
             'Should keep booths with reservation, remove unused ones and add type ones'
         )
-        event_form.save()
         self.assertEqual(event.event_booth_count_available, 2)
         self.assertEqual(event.event_booth_category_ids, self.event_booth_category_1 + self.event_booth_category_2)

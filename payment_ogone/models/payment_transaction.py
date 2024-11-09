@@ -2,6 +2,7 @@
 
 import logging
 import pprint
+import uuid
 
 from lxml import etree, objectify
 from werkzeug import urls
@@ -83,7 +84,7 @@ class PaymentTransaction(models.Model):
         }
         if self.tokenize:
             rendering_values.update({
-                'ALIAS': payment_utils.singularize_reference_prefix(prefix='ODOO-ALIAS'),
+                'ALIAS': f'ODOO-ALIAS-{uuid.uuid4().hex}',
                 'ALIASUSAGE': _("Storing your payment details is necessary for future use."),
             })
         rendering_values.update({
@@ -201,6 +202,17 @@ class PaymentTransaction(models.Model):
             self._set_done()
         elif payment_status in const.PAYMENT_STATUS_MAPPING['cancel']:
             self._set_canceled()
+        elif payment_status in const.PAYMENT_STATUS_MAPPING['declined']:
+            if data.get("NCERRORPLUS"):
+                reason = data.get("NCERRORPLUS")
+            elif data.get("NCERROR"):
+                reason = "Error code: %s" % data.get("NCERROR")
+            else:
+                reason = "Unknown reason"
+            _logger.info("the payment has been declined: %s.", reason)
+            self._set_error(
+                "Ogone: " + _("The payment has been declined: %s", reason)
+            )
         else:  # Classify unknown payment statuses as `error` tx state
             _logger.info("received data with invalid payment status: %s", payment_status)
             self._set_error(

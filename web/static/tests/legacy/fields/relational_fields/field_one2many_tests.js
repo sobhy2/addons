@@ -4,6 +4,7 @@ odoo.define('web.field_one_to_many_tests', function (require) {
 const {delay} = require('web.concurrency');
 var AbstractField = require('web.AbstractField');
 var AbstractStorageService = require('web.AbstractStorageService');
+const BasicModel = require('web.BasicModel');
 const ControlPanel = require('web.ControlPanel');
 const fieldRegistry = require('web.field_registry');
 var FormView = require('web.FormView');
@@ -20,6 +21,8 @@ const { makeLegacyDialogMappingTestEnv } = require('@web/../tests/helpers/legacy
 const cpHelpers = require('@web/../tests/search/helpers');
 var createView = testUtils.createView;
 const { FieldOne2Many } = relationalFields;
+const AbstractFieldOwl = require('web.AbstractFieldOwl');
+const fieldRegistryOwl = require('web.field_registry_owl');
 
 QUnit.module('fields', {}, function () {
 
@@ -2136,6 +2139,40 @@ QUnit.module('fields', {}, function () {
             await testUtils.dom.click(form.$('table thead th:contains(Foo)'));
             assert.ok(form.$('table tbody tr:eq(2) td:contains(abc)').length,
                 "the 3rd record is the one with 'abc' value");
+
+            form.destroy();
+        });
+
+        QUnit.test('sorting one2many char field with falsy values', async function (assert) {
+            assert.expect(3);
+
+            this.data.partner.fields.foo.sortable = true;
+            this.data.partner.records.push({ id: 23, foo: "abc" });
+            this.data.partner.records.push({ id: 24, foo: false });
+            this.data.partner.records.push({ id: 25, foo: "def" });
+            this.data.partner.records[0].p = [23, 24, 25];
+
+            var form = await createView({
+                View: FormView,
+                model: 'partner',
+                data: this.data,
+                arch: `
+                    <form>
+                        <field name="p">
+                            <tree>
+                                <field name="foo"/>
+                            </tree>
+                        </field>
+                    </form>`,
+                res_id: 1,
+                debug: 1,
+            });
+
+            assert.deepEqual([...form.el.querySelectorAll(".o_list_char")].map((el) => el.innerText), ["abc", "", "def"]);
+            await testUtils.dom.click(form.$('table thead th:contains(Foo)'));
+            assert.deepEqual([...form.el.querySelectorAll(".o_list_char")].map((el) => el.innerText), ["", "abc", "def"]);
+            await testUtils.dom.click(form.$('table thead th:contains(Foo)'));
+            assert.deepEqual([...form.el.querySelectorAll(".o_list_char")].map((el) => el.innerText), ["def", "abc", ""]);
 
             form.destroy();
         });
@@ -4909,15 +4946,20 @@ QUnit.module('fields', {}, function () {
             form.destroy();
         });
 
-        QUnit.test('one2many kanban with edit type action and domain widget (widget using SpecialData)', async function (assert) {
-            assert.expect(1);
+        QUnit.test('one2many kanban with edit type action and widget with specialData', async function (assert) {
+            assert.expect(3);
 
-            this.data.turtle.fields.model_name = { string: "Domain Condition Model", type: "char" };
-            this.data.turtle.fields.condition = { string: "Domain Condition", type: "char" };
-            _.each(this.data.turtle.records, function (record) {
-                record.model_name = 'partner';
-                record.condition = '[]';
+            testUtils.mock.patch(BasicModel, {
+                _fetchSpecialDataForMyWidget() {
+                    assert.step("_fetchSpecialDataForMyWidget");
+                    return Promise.resolve();
+                },
             });
+            const MyWidget = AbstractField.extend({
+                specialData: "_fetchSpecialDataForMyWidget",
+                className: "my_widget",
+            });
+            fieldRegistry.add('specialWidget', MyWidget);
 
             var form = await createView({
                 View: FormView,
@@ -4932,16 +4974,15 @@ QUnit.module('fields', {}, function () {
                     '<div><field name="display_name"/></div>' +
                     '<div><field name="turtle_foo"/></div>' +
                     // field without Widget in the list
-                    '<div><field name="condition"/></div>' +
+                    '<div><field name="turtle_int"/></div>' +
                     '<div> <a type="edit"> Edit </a> </div>' +
                     '</t>' +
                     '</templates>' +
                     '</kanban>' +
                     '<form>' +
                     '<field name="product_id" widget="statusbar"/>' +
-                    '<field name="model_name"/>' +
                     // field with Widget requiring specialData in the form
-                    '<field name="condition" widget="domain" options="{\'model\': \'model_name\'}"/>' +
+                    '<field name="turtle_int" widget="specialWidget"/>' +
                     '</form>' +
                     '</field>' +
                     '</group>' +
@@ -4950,19 +4991,26 @@ QUnit.module('fields', {}, function () {
             });
 
             await testUtils.dom.click(form.$('.oe_kanban_action:eq(0)'));
-            assert.strictEqual($('.o_domain_selector').length, 1, "should add domain selector widget");
+            assert.containsOnce(document.body, ".modal .my_widget", "should add our custom widget");
+            assert.verifySteps(["_fetchSpecialDataForMyWidget"]);
             form.destroy();
         });
 
         QUnit.test('one2many list with onchange and domain widget (widget using SpecialData)', async function (assert) {
-            assert.expect(3);
+            assert.expect(4);
 
-            this.data.turtle.fields.model_name = { string: "Domain Condition Model", type: "char" };
-            this.data.turtle.fields.condition = { string: "Domain Condition", type: "char" };
-            _.each(this.data.turtle.records, function (record) {
-                record.model_name = 'partner';
-                record.condition = '[]';
+            testUtils.mock.patch(BasicModel, {
+                _fetchSpecialDataForMyWidget() {
+                    assert.step("_fetchSpecialDataForMyWidget");
+                    return Promise.resolve();
+                },
             });
+            const MyWidget = AbstractField.extend({
+                specialData: "_fetchSpecialDataForMyWidget",
+                className: "my_widget",
+            });
+            fieldRegistry.add('specialWidget', MyWidget);
+
             this.data.partner.onchanges = {
                 turtles: function (obj) {
                     var virtualID = obj.turtles[1][1];
@@ -4977,13 +5025,10 @@ QUnit.module('fields', {}, function () {
                             turtle_qux: 9.8,
                             partner_ids: [],
                             turtle_ref: 'product,37',
-                            model_name: 'partner',
-                            condition: '[]',
                         }],
                     ];
                 },
             };
-            var nbFetchSpecialDomain = 0;
             var form = await createView({
                 View: FormView,
                 model: 'partner',
@@ -4995,12 +5040,11 @@ QUnit.module('fields', {}, function () {
                     '<field name="display_name"/>' +
                     '<field name="turtle_foo"/>' +
                     // field without Widget in the list
-                    '<field name="condition"/>' +
+                    '<field name="turtle_int"/>' +
                     '</tree>' +
                     '<form>' +
-                    '<field name="model_name"/>' +
                     // field with Widget requiring specialData in the form
-                    '<field name="condition" widget="domain" options="{\'model\': \'model_name\'}"/>' +
+                    '<field name="turtle_int" widget="specialWidget"/>' +
                     '</form>' +
                     '</field>' +
                     '</group>' +
@@ -5009,27 +5053,19 @@ QUnit.module('fields', {}, function () {
                 viewOptions: {
                     mode: 'edit',
                 },
-                mockRPC: function (route) {
-                    if (route === '/web/dataset/call_kw/partner/search_count') {
-                        nbFetchSpecialDomain++;
-                    }
-                    return this._super.apply(this, arguments);
-                }
             });
 
             await testUtils.dom.click(form.$('.o_field_one2many .o_field_x2many_list_row_add a'));
             assert.strictEqual($('.modal').length, 1, "form view dialog should be opened");
-            await testUtils.fields.editInput($('.modal-body input[name="model_name"]'), 'partner');
             await testUtils.dom.click($('.modal-footer button:first'));
 
-            assert.strictEqual(form.$('.o_field_one2many tbody tr:first').text(), "coucouhas changed[]",
+            assert.strictEqual(form.$('.o_field_one2many tbody tr:first').text(), "coucouhas changed42",
                 "the onchange should create one new record and remove the existing");
 
             await testUtils.dom.click(form.$('.o_field_one2many .o_list_view tbody tr:eq(0) td:first'));
 
             await testUtils.form.clickSave(form);
-            assert.strictEqual(nbFetchSpecialDomain, 1,
-                "should only fetch special domain once");
+            assert.verifySteps(["_fetchSpecialDataForMyWidget"], "should only fetch special data once");
             form.destroy();
         });
 
@@ -5897,7 +5933,6 @@ QUnit.module('fields', {}, function () {
             // click all buttons
             await testUtils.dom.click(form.$(btn1Disabled));
             await testUtils.dom.click(form.$(btn1Warn));
-            await testUtils.dom.click(form.$(btn2Disabled));
             await testUtils.dom.click(form.$(btn2Warn));
 
             // save the form
@@ -10022,6 +10057,218 @@ QUnit.module('fields', {}, function () {
                 {id: 5, turtle_int: 5},
                 {id: 6, turtle_int: 6},
             ], "should have saved the updated turtle_int sequence");
+
+            form.destroy();
+        });
+
+        QUnit.test("add_record in an o2m with an OWL field: wait mounted before success", async function (assert) {
+            assert.expect(7);
+
+            let testInst = 0;
+            class TestField extends AbstractFieldOwl {
+                setup() {
+                    super.setup();
+                    const ID = testInst++;
+                    owl.hooks.onMounted(() => {
+                        assert.step(`mounted ${ID}`);
+                    });
+
+                    owl.hooks.onWillUnmount(() => {
+                        assert.step(`willUnmount ${ID}`);
+                    });
+                }
+                activate() {
+                    return true;
+                }
+            }
+
+            TestField.template = owl.tags.xml`<span>test</span>`;
+            fieldRegistryOwl.add('test_field', TestField);
+
+            const def = testUtils.makeTestPromise();
+            const form = await createView({
+                View: FormView,
+                model: 'partner',
+                debug: 1,
+                data: this.data,
+                arch: `<form>
+                        <field name="p">
+                            <tree editable="bottom">
+                                <field name="name" widget="test_field"/>
+                            </tree>
+                        </field>
+                    </form>`,
+                viewOptions: {
+                    mode: 'edit',
+                },
+            });
+
+            const list = form.renderer.allFieldWidgets[form.handle][0];
+
+            list.trigger_up('add_record', {
+                context: [{
+                    default_name: 'this is a test',
+                }],
+                allowWarning: true,
+                forceEditable: 'bottom',
+                onSuccess: function () {
+                    assert.step("onSuccess");
+                    def.resolve();
+                }
+            });
+
+            await testUtils.nextTick();
+            await def;
+            assert.verifySteps(["mounted 0", "willUnmount 0", "mounted 1", "onSuccess"]);
+            form.destroy();
+            assert.verifySteps(["willUnmount 1"]);
+        });
+
+        QUnit.test('nested one2manys, multi page, onchange', async function (assert) {
+            assert.expect(5);
+
+            this.data.partner.records[2].int_field = 5;
+            this.data.partner.records[0].p = [2, 4]; // limit 1 -> record 4 will be on second page
+            this.data.partner.records[1].turtles = [1];
+            this.data.partner.records[2].turtles = [2];
+            this.data.turtle.records[0].turtle_int = 1;
+            this.data.turtle.records[1].turtle_int = 2;
+
+            this.data.partner.onchanges.int_field = function (obj) {
+               assert.step('onchange')
+               obj.p = [[5]]
+               obj.p.push([1, 2, { turtles: [[5], [1, 1, { turtle_int: obj.int_field }]] }]);
+               obj.p.push([1, 4, { turtles: [[5], [1, 2, { turtle_int: obj.int_field }]] }]);
+            };
+
+            var form = await createView({
+                View: FormView,
+                model: 'partner',
+                data: this.data,
+                arch: '<form string="Partner">' +
+                    '<field name="int_field"/>' +
+                    '<field name="p">' +
+                    '<tree editable="bottom" limit="1" default_order="display_name">' +
+                        '<field name="display_name" />' +
+                        '<field name="int_field" />' +
+                        '<field name="turtles">' +
+                        '<tree editable="bottom">' +
+                            '<field name="turtle_int"/>' +
+                        '</tree>' +
+                        '</field>' +
+                    '</tree>' +
+                    '</field>' +
+                    '</form>',
+                res_id: 1,
+                viewOptions: {
+                    mode: 'edit',
+                },
+            });
+
+            await testUtils.fields.editInput(form.$('.o_field_widget[name="int_field"]'), '5');
+            assert.verifySteps(['onchange'])
+
+            await testUtils.form.clickSave(form);
+
+            assert.strictEqual(this.data.partner.records[0].int_field, 5, 'Value should have been updated')
+            assert.strictEqual(this.data.turtle.records[1].turtle_int, 5, 'Shown data should have been updated');
+            assert.strictEqual(this.data.turtle.records[0].turtle_int, 5, 'Hidden data should have been updated');
+
+            form.destroy();
+        });
+
+        QUnit.test('add a row to an x2many and ask canBeRemoved twice', async function (assert) {
+            // This test simulates that the view is asked twice to save its changes because the user
+            // is leaving. Before the corresponding fix, the changes in the x2many field weren't
+            // removed after the save, and as a consequence they were saved twice (i.e. the row was
+            // created twice).
+
+            const form = await createView({
+                View: FormView,
+                model: 'partner',
+                data: this.data,
+                arch: `
+                    <form>
+                        <field name="p">
+                            <tree editable="bottom">
+                                <field name="display_name"/>
+                            </tree>
+                        </field>
+                    </form>`,
+                res_id: 1,
+                async mockRPC(route, args) {
+                    if (args.method === "write") {
+                        assert.step("write");
+                        assert.deepEqual(args.args[1], {
+                            p: [[0, args.args[1].p[0][1], { display_name: "a name" }]],
+                        });
+                    }
+                    return this._super(route, args);
+                },
+                viewOptions: {
+                    mode: 'edit',
+                },
+            });
+
+            // click add food
+            await testUtils.dom.click(form.$('.o_field_x2many_list_row_add a'));
+            await testUtils.fields.editInput(form.$('.o_input[name="display_name"]'), 'a name');
+            assert.containsOnce(form, ".o_data_row");
+
+            form.canBeRemoved();
+            form.canBeRemoved();
+            await testUtils.nextTick();
+            assert.containsOnce(form, ".o_data_row");
+            assert.verifySteps(["write"]);
+
+            form.destroy();
+        });
+
+        QUnit.test('add a row to an x2many and ask canBeRemoved twice (new record)', async function (assert) {
+            // This test simulates that the view is asked twice to save its changes because the user
+            // is leaving. Before the corresponding fix, the changes in the x2many field weren't
+            // removed after the save, and as a consequence they were saved twice (i.e. the row was
+            // created twice).
+
+            const form = await createView({
+                View: FormView,
+                model: 'partner',
+                data: this.data,
+                arch: `
+                    <form>
+                        <field name="p">
+                            <tree editable="bottom">
+                                <field name="display_name"/>
+                            </tree>
+                        </field>
+                    </form>`,
+                async mockRPC(route, args) {
+                    if (args.method === "create") {
+                        assert.step("create");
+                        assert.deepEqual(args.args[0], {
+                            p: [[0, args.args[0].p[0][1], { display_name: "a name" }]],
+                        });
+                    }
+                    if (args.method === "write") {
+                        assert.step("write"); // should not be called
+                    }
+                    return this._super(route, args);
+                },
+                viewOptions: {
+                    mode: 'edit',
+                },
+            });
+
+            // click add food
+            await testUtils.dom.click(form.$('.o_field_x2many_list_row_add a'));
+            await testUtils.fields.editInput(form.$('.o_input[name="display_name"]'), 'a name');
+            assert.containsOnce(form, ".o_data_row");
+
+            form.canBeRemoved();
+            form.canBeRemoved();
+            await testUtils.nextTick();
+            assert.containsOnce(form, ".o_data_row");
+            assert.verifySteps(["create"]);
 
             form.destroy();
         });

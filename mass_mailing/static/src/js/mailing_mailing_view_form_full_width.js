@@ -17,15 +17,23 @@ const MassMailingFullWidthFormController = FormController.extend({
      */
     init() {
         this._super(...arguments);
-        this._boundOnDomUpdated = this._onDomUpdated.bind(this);
         bus.on('DOM_updated', this, this._onDomUpdated);
-        this._resizeObserver = new ResizeObserver(this._onResizeIframeContents.bind(this));
+        this._resizeObserver =  new ResizeObserver(entries => {
+            // We wrap this in requestAnimationFrame to greatly mitigate
+            // the "ResizeObserver loop limit exceeded" error.
+            window.requestAnimationFrame(() => {
+                if (!Array.isArray(entries) || !entries.length) {
+                    return;
+                }
+                this._onResizeIframeContents(entries);
+            });
+        });
     },
     /**
      * @override
      */
     destroy() {
-        bus.off('DOM_updated', this, this._boundOnDomUpdated);
+        bus.off('DOM_updated', this, this._onDomUpdated);
         this._super(...arguments);
     },
 
@@ -51,7 +59,11 @@ const MassMailingFullWidthFormController = FormController.extend({
         } else {
             const ref = $iframeDoc.find('#iframe_target')[0];
             if (ref) {
-                this.$iframe.height(Math.max(ref.scrollHeight + VERTICAL_OFFSET, minHeight));
+                this.$iframe.css({
+                    height: this._isFullScreen()
+                        ? $(window).height()
+                        : Math.max(ref.scrollHeight + VERTICAL_OFFSET, minHeight),
+                });
             }
         }
     },
@@ -69,7 +81,6 @@ const MassMailingFullWidthFormController = FormController.extend({
         const isFullscreen =  this._isFullScreen();
         if (isFullscreen) {
             $sidebar.height(windowHeight);
-            this.$iframe.height(windowHeight);
             $sidebar.css({
                 top: '',
                 bottom: '',

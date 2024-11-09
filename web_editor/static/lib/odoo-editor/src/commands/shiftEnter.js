@@ -12,7 +12,7 @@ import {
 } from '../utils/utils.js';
 
 Text.prototype.oShiftEnter = function (offset) {
-    this.parentElement.oShiftEnter(splitTextNode(this, offset));
+    return this.parentElement.oShiftEnter(splitTextNode(this, offset));
 };
 
 HTMLElement.prototype.oShiftEnter = function (offset) {
@@ -39,4 +39,30 @@ HTMLElement.prototype.oShiftEnter = function (offset) {
             break;
         }
     }
+
+    return brEls;
 };
+
+/**
+ * Special behavior for links: do not add a line break at its edges, but rather
+ * move the line break outside the link.
+ */
+HTMLAnchorElement.prototype.oShiftEnter = function () {
+    const brs = HTMLElement.prototype.oShiftEnter.call(this, ...arguments);
+    const anchor = brs[0].parentElement;
+    let firstChild = anchor.firstChild;
+    if (firstChild && firstChild.nodeType === Node.TEXT_NODE && firstChild.textContent === '\uFEFF') {
+        firstChild = anchor.childNodes[1];
+    }
+    let lastChild = anchor.lastChild;
+    if (lastChild && lastChild.nodeType === Node.TEXT_NODE && lastChild.textContent === '\uFEFF') {
+        lastChild = anchor.childNodes.length > 1 && anchor.childNodes[anchor.childNodes.length - 2];
+    }
+    if (brs.includes(firstChild)) {
+        brs.forEach(br => anchor.before(br));
+        setSelection(...rightPos(brs[brs.length - 1]));
+    } else if (brs.includes(lastChild)) {
+        brs.forEach(br => anchor.after(br));
+        setSelection(...rightPos(brs[0]));
+    }
+}

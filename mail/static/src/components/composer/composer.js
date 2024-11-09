@@ -115,7 +115,8 @@ export class Composer extends Component {
         }
         return (
             (this.props.hasThreadName && this.composerView.composer.thread) ||
-            (this.props.hasFollowers && !this.composerView.composer.isLog)
+            (this.props.hasFollowers && !this.composerView.composer.isLog) ||
+            this.composerView.threadView && this.composerView.threadView.replyingToMessageView
         );
     }
 
@@ -159,7 +160,7 @@ export class Composer extends Component {
      */
     _onClickAddAttachment() {
         this._fileUploaderRef.comp.openBrowserFileUploader();
-        if (!this.env.device.isMobile) {
+        if (!this.messaging.device.isMobileDevice) {
             this.composerView.update({ doFocus: true });
         }
     }
@@ -247,7 +248,7 @@ export class Composer extends Component {
         ev.stopPropagation();
         this._textInputRef.comp.saveStateInStore();
         this.composerView.insertIntoTextInput(ev.detail.unicode);
-        if (!this.env.device.isMobile) {
+        if (!this.messaging.device.isMobileDevice) {
             this.composerView.update({ doFocus: true });
         }
     }

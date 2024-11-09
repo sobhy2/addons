@@ -135,3 +135,63 @@ class TestAccountAccount(AccountTestInvoicingCommon):
             self.company_data['default_journal_bank'].company_id.account_journal_payment_debit_account_id.reconcile = False
         with self.assertRaises(ValidationError), self.cr.savepoint():
             self.company_data['default_journal_bank'].company_id.account_journal_payment_credit_account_id.reconcile = False
+
+    def test_remove_account_from_account_group(self):
+        """Test if an account is well removed from account group"""
+        group = self.env['account.group'].create({
+            'name': 'test_group',
+            'code_prefix_start': 401000,
+            'code_prefix_end': 402000,
+            'company_id': self.env.company.id
+        })
+
+        account_1 = self.company_data['default_account_revenue'].copy({'code': 401000})
+        account_2 = self.company_data['default_account_revenue'].copy({'code': 402000})
+
+        self.assertRecordValues(account_1 + account_2, [{'group_id': group.id}] * 2)
+
+        group.code_prefix_end = 401000
+
+        self.assertRecordValues(account_1 + account_2, [{'group_id': group.id}, {'group_id': False}])
+
+    def test_compute_current_balance(self):
+        """ Test if an account's current_balance is computed correctly """
+
+        account_payable = self.company_data['default_account_payable']
+        account_receivable = self.company_data['default_account_receivable']
+
+        payable_debit_move = {
+            'line_ids': [
+                (0, 0, {'name': 'debit', 'account_id': account_payable.id, 'debit': 100.0, 'credit': 0.0}),
+                (0, 0, {'name': 'credit', 'account_id': account_receivable.id, 'debit': 0.0, 'credit': 100.0}),
+            ],
+        }
+        payable_credit_move = {
+            'line_ids': [
+                (0, 0, {'name': 'credit', 'account_id': account_payable.id, 'debit': 0.0, 'credit': 100.0}),
+                (0, 0, {'name': 'debit', 'account_id': account_receivable.id, 'debit': 100.0, 'credit': 0.0}),
+            ],
+        }
+
+        self.assertEqual(account_payable.current_balance, 0)
+
+        self.env['account.move'].create(payable_debit_move).action_post()
+        account_payable._compute_current_balance()
+        self.assertEqual(account_payable.current_balance, 100)
+
+        self.env['account.move'].create(payable_credit_move).action_post()
+        account_payable._compute_current_balance()
+        self.assertEqual(account_payable.current_balance, 0)
+
+        self.env['account.move'].create(payable_credit_move).action_post()
+        account_payable._compute_current_balance()
+        self.assertEqual(account_payable.current_balance, -100)
+
+        self.env['account.move'].create(payable_credit_move).button_cancel()
+        account_payable._compute_current_balance()
+        self.assertEqual(account_payable.current_balance, -100, 'Canceled invoices/bills should not be used when computing the balance')
+
+        # draft invoice
+        self.env['account.move'].create(payable_credit_move)
+        account_payable._compute_current_balance()
+        self.assertEqual(account_payable.current_balance, -100, 'Draft invoices/bills should not be used when computing the balance')

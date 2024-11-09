@@ -215,7 +215,7 @@ export class SearchModel extends EventBus {
         const { comparison, context, domain, groupBy, orderBy } = config;
 
         this.globalComparison = comparison;
-        this.globalContext = context || {};
+        this.globalContext = Object.assign({}, context);
         this.globalDomain = domain || [];
         this.globalGroupBy = groupBy || [];
         this.globalOrderBy = orderBy || [];
@@ -264,6 +264,9 @@ export class SearchModel extends EventBus {
             this.searchViewId = searchViewDescription.viewId;
         }
 
+        const { searchDefaults, searchPanelDefaults } =
+            this._extractSearchDefaultsFromGlobalContext();
+
         if (config.state) {
             this._importState(config.state);
             this.__legacyParseSearchPanelArchAnyway(searchViewDescription);
@@ -284,26 +287,6 @@ export class SearchModel extends EventBus {
 
         // ... to rework (API for external domain, groupBy, facet)
         this.domainParts = {}; // put in state?
-
-        const searchDefaults = {};
-        const searchPanelDefaults = {};
-
-        for (const key in this.globalContext) {
-            const defaultValue = this.globalContext[key];
-            const searchDefaultMatch = /^search_default_(.*)$/.exec(key);
-            if (searchDefaultMatch) {
-                if (defaultValue) {
-                    searchDefaults[searchDefaultMatch[1]] = defaultValue;
-                }
-                delete this.globalContext[key];
-                continue;
-            }
-            const searchPanelDefaultMatch = /^searchpanel_default_(.*)$/.exec(key);
-            if (searchPanelDefaultMatch) {
-                searchPanelDefaults[searchPanelDefaultMatch[1]] = defaultValue;
-                delete this.globalContext[key];
-            }
-        }
 
         const parser = new SearchArchParser(
             searchViewDescription,
@@ -382,11 +365,13 @@ export class SearchModel extends EventBus {
 
         const { comparison, context, domain, groupBy, orderBy } = config;
 
-        this.globalContext = context || {};
+        this.globalContext = Object.assign({}, context);
         this.globalDomain = domain || [];
         this.globalComparison = comparison;
         this.globalGroupBy = groupBy || [];
         this.globalOrderBy = orderBy || [];
+
+        this._extractSearchDefaultsFromGlobalContext();
 
         await this._reloadSections();
     }
@@ -407,7 +392,7 @@ export class SearchModel extends EventBus {
      */
     get context() {
         if (!this._context) {
-            this._context = this._getContext();
+            this._context = makeContext([this.globalContext, this._getContext()]);
         }
         return deepCopy(this._context);
     }
@@ -1211,6 +1196,28 @@ export class SearchModel extends EventBus {
         }
     }
 
+    _extractSearchDefaultsFromGlobalContext() {
+        const searchDefaults = {};
+        const searchPanelDefaults = {};
+        for (const key in this.globalContext) {
+            const defaultValue = this.globalContext[key];
+            const searchDefaultMatch = /^search_default_(.*)$/.exec(key);
+            if (searchDefaultMatch) {
+                if (defaultValue) {
+                    searchDefaults[searchDefaultMatch[1]] = defaultValue;
+                }
+                delete this.globalContext[key];
+                continue;
+            }
+            const searchPanelDefaultMatch = /^searchpanel_default_(.*)$/.exec(key);
+            if (searchPanelDefaultMatch) {
+                searchPanelDefaults[searchPanelDefaultMatch[1]] = defaultValue;
+                delete this.globalContext[key];
+            }
+        }
+        return { searchDefaults, searchPanelDefaults };
+    }
+
     /**
      * Fetches values for each category at startup. At reload a category is
      * only fetched if needed.
@@ -1325,7 +1332,7 @@ export class SearchModel extends EventBus {
      */
     _getContext() {
         const groups = this._getGroups();
-        const contexts = [this.userService.context, this.globalContext];
+        const contexts = [this.userService.context];
         for (const group of groups) {
             for (const activeItem of group.activeItems) {
                 const context = this._getSearchItemContext(activeItem);
@@ -1336,7 +1343,7 @@ export class SearchModel extends EventBus {
         }
         let context;
         try {
-            context = makeContext(...contexts); // what we want?
+            context = makeContext(contexts);
             return context;
         } catch (error) {
             throw new Error(
@@ -1732,7 +1739,7 @@ export class SearchModel extends EventBus {
         const { description, isDefault, isShared } = params;
         const fns = this.env.__getContext__.callbacks;
         const localContext = Object.assign({}, ...fns.map((fn) => fn()));
-        const context = makeContext(this._getContext(), localContext);
+        const context = makeContext([this._getContext(), localContext]);
         const userContext = this.userService.context;
         for (const key in context) {
             if (key in userContext || /^search(panel)?_default_/.test(key)) {
@@ -1836,7 +1843,7 @@ export class SearchModel extends EventBus {
             case "favorite":
             case "filter": {
                 //Return a deep copy of the filter/favorite to avoid the view to modify the context
-                return makeContext(searchItem.context && deepCopy(searchItem.context));
+                return makeContext([searchItem.context && deepCopy(searchItem.context)]);
             }
             default: {
                 return null;

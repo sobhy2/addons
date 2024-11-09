@@ -51,9 +51,15 @@ function registerView(name, LegacyView) {
                 searchPanel = globalState.searchPanel;
             }
 
+            // always add user context to the action context
+            this.user = useService("user");
+            const action = Object.assign({}, this.props.action, {
+                context: Object.assign({}, this.user.context, this.props.action.context),
+            });
+
             const { actionFlags, breadcrumbs = [] } = this.env.config;
             this.viewParams = Object.assign({}, actionFlags, {
-                action: this.props.action,
+                action,
                 // legacy views automatically add the last part of the breadcrumbs
                 breadcrumbs: breadcrumbsToLegacy(breadcrumbs),
                 modelName: this.props.resModel,
@@ -151,6 +157,7 @@ function registerView(name, LegacyView) {
     Controller.isMobileFriendly = LegacyView.prototype.mobile_friendly;
     Controller.multiRecord = LegacyView.prototype.multi_record;
     Controller.type = LegacyView.prototype.viewType;
+    Controller.accessKey = LegacyView.prototype.accesskey;
     Controller.isLegacy = true;
     if (!viewRegistry.contains(name)) {
         viewRegistry.add(name, Controller);

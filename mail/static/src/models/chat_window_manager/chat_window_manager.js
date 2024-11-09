@@ -98,12 +98,15 @@ function factory(dependencies) {
         /**
          * @param {mail.thread} thread
          * @param {Object} [param1={}]
+         * @param {boolean} [param1.focus] if set, set focus the chat window
+         *   to open.
          * @param {boolean} [param1.isFolded=false]
          * @param {boolean} [param1.makeActive=false]
          * @param {boolean} [param1.notifyServer]
          * @param {boolean} [param1.replaceNewMessage=false]
          */
         openThread(thread, {
+            focus,
             isFolded = false,
             makeActive = false,
             notifyServer,
@@ -131,7 +134,7 @@ function factory(dependencies) {
             if (makeActive) {
                 // avoid double notify at this step, it will already be done at
                 // the end of the current method
-                chatWindow.makeActive({ notifyServer: false });
+                chatWindow.makeActive({ focus, notifyServer: false });
             }
             // Flux specific: notify server of chat window being opened.
             if (notifyServer && !this.messaging.currentGuest) {
@@ -159,6 +162,11 @@ function factory(dependencies) {
             _newOrdered[index + 1] = chatWindow;
             this.update({ allOrdered: replace(_newOrdered) });
             chatWindow.focus();
+            for (const loopedChatWindow of [chatWindow, otherChatWindow]) {
+                if (loopedChatWindow.threadView) {
+                    loopedChatWindow.threadView.addComponentHint('adjust-scroll');
+                }
+            }
         }
 
         /**
@@ -180,6 +188,11 @@ function factory(dependencies) {
             _newOrdered[index - 1] = chatWindow;
             this.update({ allOrdered: replace(_newOrdered) });
             chatWindow.focus();
+            for (const loopedChatWindow of [chatWindow, otherChatWindow]) {
+                if (loopedChatWindow.threadView) {
+                    loopedChatWindow.threadView.addComponentHint('adjust-scroll');
+                }
+            }
         }
 
         /**
@@ -197,6 +210,11 @@ function factory(dependencies) {
             _newOrdered[index1] = chatWindow2;
             _newOrdered[index2] = chatWindow1;
             this.update({ allOrdered: replace(_newOrdered) });
+            for (const chatWindow of [chatWindow1, chatWindow2]) {
+                if (chatWindow.threadView) {
+                    chatWindow.threadView.addComponentHint('adjust-scroll');
+                }
+            }
         }
 
         //----------------------------------------------------------------------
@@ -294,7 +312,7 @@ function factory(dependencies) {
             const HIDDEN_MENU_WIDTH = 200; // max width, including width of dropup list items
             const START_GAP_WIDTH = device.isMobile ? 0 : 10;
             const chatWindows = this.allOrdered;
-            if (!device.isMobile && discuss.isOpen) {
+            if ((!device.isMobile && discuss.isOpen) || this.messaging.discussPublicView) {
                 return visual;
             }
             if (!chatWindows.length) {

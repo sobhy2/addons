@@ -21,6 +21,7 @@ import {
     setupWebClientRegistries,
 } from "./../helpers";
 import * as cpHelpers from "@web/../tests/search/helpers";
+import { GraphModel } from "@web/views/graph/graph_model";
 
 let serverData;
 // legacy stuff
@@ -187,12 +188,7 @@ QUnit.module("ActionManager", (hooks) => {
 
         let action = await loadAction(3, actionParams);
         assert.verifySteps(["server loaded"]);
-        const baseContext = {
-            lang: "en",
-            tz: "taht",
-            uid: 7,
-        };
-        assert.deepEqual(action.context, { ...baseContext, ...actionParams });
+        assert.deepEqual(action.context, actionParams);
 
         // Modify the action in place
         action.context.additionalContext.some.deep.nested = "Nesta";
@@ -201,7 +197,7 @@ QUnit.module("ActionManager", (hooks) => {
         actionParams.additionalContext.some.deep.nested = "Marley";
         action = await loadAction(3, actionParams);
         assert.verifySteps([], "loaded from cache");
-        assert.deepEqual(action.context, { ...baseContext, ...actionParams });
+        assert.deepEqual(action.context, actionParams);
     });
 
     QUnit.test("no widget memory leaks when doing some action stuff", async function (assert) {
@@ -620,4 +616,36 @@ QUnit.module("ActionManager", (hooks) => {
         // check on the whole DOM
         assert.containsNone(document.body, ".tooltip");
     });
+
+    QUnit.test(
+        "search defaults are removed from context when switching view",
+        async function (assert) {
+            assert.expect(1);
+            serverData.views["partner,false,graph"] = `<graph/>`;
+            serverData.views["partner,false,list"] = `<list/>`;
+            const context = {
+                search_default_x: true,
+                searchpanel_default_y: true,
+            };
+            patchWithCleanup(GraphModel.prototype, {
+                load(searchParams) {
+                    assert.deepEqual(searchParams.context, { lang: "en", tz: "taht", uid: 7 });
+                    return this._super.apply(this, arguments);
+                },
+            });
+
+            const webClient = await createWebClient({ serverData });
+            await doAction(webClient, {
+                res_model: "partner",
+                type: "ir.actions.act_window",
+                views: [
+                    [false, "list"],
+                    [false, "graph"],
+                ],
+                context,
+            });
+            // list view is loaded, switch to graph view
+            await cpHelpers.switchView(webClient.el, "graph");
+        }
+    );
 });

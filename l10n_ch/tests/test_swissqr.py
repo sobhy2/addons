@@ -4,6 +4,7 @@ import time
 
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.tests import tagged
+from odoo.tools.misc import mod10r
 
 CH_IBAN = 'CH15 3881 5158 3845 3843 7'
 QR_IBAN = 'CH21 3080 8001 2345 6782 7'
@@ -99,7 +100,8 @@ class TestSwissQR(AccountTestInvoicingCommon):
         )
 
     def swissqr_generated(self, invoice, ref_type='NON'):
-        """ Prints the given invoice and tests that a Swiss QR generation is triggered. """
+        """ Ensure correct params for Swiss QR generation. """
+
         self.assertTrue(
             invoice.partner_bank_id._eligible_for_qr_code('ch_qr', invoice.partner_id, invoice.currency_id), 'A Swiss QR can be generated'
         )
@@ -111,31 +113,31 @@ class TestSwissQR(AccountTestInvoicingCommon):
         else:
             struct_ref = ''
             unstr_msg = invoice.payment_reference or invoice.ref or invoice.name or ''
-        unstr_msg = (unstr_msg or invoice.number).replace('/', '%2F')
+        unstr_msg = unstr_msg or invoice.number
 
         payload = (
-            "SPC%0A"
-            "0200%0A"
-            "1%0A"
-            "{iban}%0A"
-            "K%0A"
-            "company_1_data%0A"
-            "Route+de+Berne+88%0A"
-            "2000+Neuch%C3%A2tel%0A"
-            "%0A%0A"
-            "CH%0A"
-            "%0A%0A%0A%0A%0A%0A%0A"
-            "42.00%0A"
-            "CHF%0A"
-            "K%0A"
-            "Partner%0A"
-            "Route+de+Berne+41%0A"
-            "1000+Lausanne%0A"
-            "%0A%0A"
-            "CH%0A"
-            "{ref_type}%0A"
-            "{struct_ref}%0A"
-            "{unstr_msg}%0A"
+            "SPC\n"
+            "0200\n"
+            "1\n"
+            "{iban}\n"
+            "K\n"
+            "company_1_data\n"
+            "Route de Berne 88\n"
+            "2000 Neuchâtel\n"
+            "\n\n"
+            "CH\n"
+            "\n\n\n\n\n\n\n"
+            "42.00\n"
+            "CHF\n"
+            "K\n"
+            "Partner\n"
+            "Route de Berne 41\n"
+            "1000 Lausanne\n"
+            "\n\n"
+            "CH\n"
+            "{ref_type}\n"
+            "{struct_ref}\n"
+            "{unstr_msg}\n"
             "EPD"
         ).format(
             iban=invoice.partner_bank_id.sanitized_acc_number,
@@ -144,11 +146,21 @@ class TestSwissQR(AccountTestInvoicingCommon):
             unstr_msg=unstr_msg,
         )
 
-        expected_url = ("/report/barcode/?type=QR&value={}"
-                        "&width=256&height=256&quiet=1&mask=ch_cross").format(payload)
+        expected_params = {
+            'barcode_type': 'QR',
+            'barLevel': 'M',
+            'width': 256,
+            'height': 256,
+            'quiet': 1,
+            'mask': 'ch_cross',
+            'value': payload,
+        }
 
-        url = invoice.generate_qr_code()
-        self.assertEqual(url, expected_url)
+        params = invoice.partner_bank_id._get_qr_code_generation_params(
+            'ch_qr', 42.0, invoice.currency_id, invoice.partner_id, unstr_msg, struct_ref
+        )
+
+        self.assertEqual(params, expected_params)
 
     def test_swissQR_missing_bank(self):
         # Let us test the generation of a SwissQR for an invoice, first by showing an
@@ -171,3 +183,30 @@ class TestSwissQR(AccountTestInvoicingCommon):
         self.invoice1.partner_bank_id = qriban_account
         self.invoice1.action_post()
         self.swissqr_generated(self.invoice1, ref_type="QRR")
+
+    def test_swiss_order_reference_isr_for_qr_code(self):
+        """
+        Test that the order reference is correctly generated for QR-Code
+        We summon the skipTest if Sale is not installed (instead of creating a whole module for one test)
+        """
+        if 'sale.order' not in self.env:
+            self.skipTest('`sale` is not installed')
+
+        acquirer = self.env['payment.acquirer'].create({'name': 'Test',})
+        order = self.env['sale.order'].create({
+            'name': "S00001",
+            'partner_id': self.customer.id,
+            'order_line': [
+                (0, 0, {'product_id': self.product_a.id, 'price_unit': 100}),
+            ],
+        })
+        payment_transaction = self.env['payment.transaction'].create({
+            'acquirer_id': acquirer.id,
+            'sale_order_ids': [order.id],
+            'partner_id': self.customer.id,
+            'amount': 100,
+            'currency_id': self.env.company.currency_id.id,
+        })
+        payment_transaction._set_pending()
+
+        self.assertEqual(order.reference, mod10r(order.reference[:-1]))

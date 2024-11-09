@@ -47,6 +47,13 @@ const DEFAULT_PALETTE = {
     '4': '#FFFFFF',
     '5': '#383E45',
 };
+/**
+ * Set of all the data attributes relative to the background images.
+ */
+const BACKGROUND_IMAGE_ATTRIBUTES = new Set([
+    "originalId", "originalSrc", "mimetype", "resizeWidth", "glFilter", "quality", "bgSrc",
+    "filterOptions",
+]);
 
 /**
  * Computes the number of "px" needed to make a "rem" unit. Subsequent calls
@@ -179,6 +186,26 @@ function _areCssValuesEqual(value1, value2, cssProp, $target) {
         temp2El.style.backgroundImage = value2;
         document.body.appendChild(temp2El);
         value2 = getComputedStyle(temp2El).backgroundImage;
+        document.body.removeChild(temp2El);
+
+        return value1 === value2;
+    }
+
+    // In case the values are meant as box-shadow, this is difficult to compare.
+    // In this case we use the kinda hacky and probably inneficient but probably
+    // easiest way: applying the value as box-shadow of two fakes elements and
+    // compare their computed value.
+    if (cssProp === 'box-shadow') {
+        const temp1El = document.createElement('div');
+        temp1El.style.boxShadow = value1;
+        document.body.appendChild(temp1El);
+        value1 = getComputedStyle(temp1El).boxShadow;
+        document.body.removeChild(temp1El);
+
+        const temp2El = document.createElement('div');
+        temp2El.style.boxShadow = value2;
+        document.body.appendChild(temp2El);
+        value2 = getComputedStyle(temp2El).boxShadow;
         document.body.removeChild(temp2El);
 
         return value1 === value2;
@@ -317,6 +344,63 @@ function _isColorGradient(value) {
     // FIXME duplicated in odoo-editor/utils.js
     return value && value.includes('-gradient(');
 }
+/**
+ * Returns the class of the element that matches the specified prefix.
+ *
+ * @private
+ * @param {Element} el element from which to recover the color class
+ * @param {string[]} colorNames
+ * @param {string} prefix prefix of the color class to recover
+ * @returns {string} color class matching the prefix or an empty string
+ */
+function _getColorClass(el, colorNames, prefix) {
+    const prefixedColorNames = _computeColorClasses(colorNames, prefix);
+    return el.classList.value.split(' ').filter(cl => prefixedColorNames.includes(cl)).join(' ');
+}
+/**
+ * Add one or more new attributes related to background images in the
+ * BACKGROUND_IMAGE_ATTRIBUTES set.
+ *
+ * @param {...string} newAttributes The new attributes to add in the
+ * BACKGROUND_IMAGE_ATTRIBUTES set.
+ */
+function _addBackgroundImageAttributes(...newAttributes) {
+    BACKGROUND_IMAGE_ATTRIBUTES.add(...newAttributes);
+}
+/**
+ * Check if an attribute is in the BACKGROUND_IMAGE_ATTRIBUTES set.
+ *
+ * @param {string} attribute The attribute that has to be checked.
+ */
+function _isBackgroundImageAttribute(attribute) {
+    return BACKGROUND_IMAGE_ATTRIBUTES.has(attribute);
+}
+/**
+ * Checks if an element supposedly marked with the o_editable_media class should
+ * in fact be editable (checks if its environment looks like a non editable
+ * environment whose media should be editable).
+ *
+ * TODO: the name of this function is voluntarily bad to reflect the fact that
+ * this system should be improved. The combination of o_not_editable,
+ * o_editable, getContentEditableAreas, getReadOnlyAreas and other concepts
+ * related to what should be editable or not should be reviewed.
+ *
+ * @returns {boolean}
+ */
+function _shouldEditableMediaBeEditable(mediaEl) {
+    // Some sections of the DOM are contenteditable="false" (for
+    // example with the help of the o_not_editable class) but have
+    // inner media that should be editable (the fact the container
+    // is not is to prevent adding text in between those medias).
+    // This case is complex and the solution to support it is not
+    // perfect: we mark those media with a class and check that the
+    // first non editable ancestor is in fact in an editable parent.
+    const parentEl = mediaEl.parentElement;
+    const nonEditableAncestorRootEl = parentEl && parentEl.closest('[contenteditable="false"]');
+    return nonEditableAncestorRootEl
+        && nonEditableAncestorRootEl.parentElement
+        && nonEditableAncestorRootEl.parentElement.isContentEditable;
+}
 
 return {
     CSS_SHORTHANDS: CSS_SHORTHANDS,
@@ -335,5 +419,9 @@ return {
     getBgImageURL: _getBgImageURL,
     backgroundImageCssToParts: _backgroundImageCssToParts,
     backgroundImagePartsToCss: _backgroundImagePartsToCss,
+    getColorClass: _getColorClass,
+    addBackgroundImageAttributes: _addBackgroundImageAttributes,
+    isBackgroundImageAttribute: _isBackgroundImageAttribute,
+    shouldEditableMediaBeEditable: _shouldEditableMediaBeEditable,
 };
 });

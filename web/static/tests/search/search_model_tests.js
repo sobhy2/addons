@@ -530,6 +530,66 @@ QUnit.module("Search", (hooks) => {
         ]);
     });
 
+    QUnit.test("parsing a filter and a dateFilter", async function (assert) {
+        assert.expect(1);
+        const model = await makeSearchModel({
+            serverData,
+            searchViewArch: `
+                    <search>
+                        <filter name="filter" string="Filter" domain="[['foo', '=', 'a']]"/>
+                        <filter name="date_filter" string="Date" date="date_field"/>
+                    </search>
+                `,
+        });
+        const groupNumbers = model.getSearchItems(() => true).map((i) => i.groupNumber);
+        assert.deepEqual(groupNumbers, [1, 1]);
+    });
+
+    QUnit.test("parsing a groupBy and a dateGroupBy", async function (assert) {
+        assert.expect(1);
+        const model = await makeSearchModel({
+            serverData,
+            searchViewArch: `
+                    <search>
+                        <filter name="group_by" context="{ 'group_by': 'foo'}"/>
+                        <filter name="date_groupBy" string="DateGroupBy" context="{'group_by': 'date_field:day'}"/>
+                    </search>
+                `,
+        });
+        const groupNumbers = model.getSearchItems(() => true).map((i) => i.groupNumber);
+        assert.deepEqual(groupNumbers, [1, 1]);
+    });
+
+    QUnit.test("parsing a filter and a groupBy", async function (assert) {
+        assert.expect(1);
+        const model = await makeSearchModel({
+            serverData,
+            searchViewArch: `
+                    <search>
+                        <filter name="filter" string="Filter" domain="[['foo', '=', 'a']]"/>
+                        <filter name="group_by" context="{ 'group_by': 'foo'}"/>
+                    </search>
+                `,
+        });
+        const groupNumbers = model.getSearchItems(() => true).map((i) => i.groupNumber);
+        assert.deepEqual(groupNumbers, [1, 2]);
+    });
+
+    QUnit.test("parsing a groupBy and a filter", async function (assert) {
+        assert.expect(1);
+        const model = await makeSearchModel({
+            serverData,
+            searchViewArch: `
+                    <search>
+                        <filter name="group_by" context="{ 'group_by': 'foo'}"/>
+                        <filter name="filter" string="Filter" domain="[['foo', '=', 'a']]"/>
+                    </search>
+                `,
+        });
+        const groupNumbers = model.getSearchItems(() => true).map((i) => i.groupNumber);
+        assert.deepEqual(groupNumbers, [2, 1]);
+    });
+
     QUnit.test("process search default group by", async function (assert) {
         assert.expect(1);
         const model = await makeSearchModel({
@@ -812,4 +872,26 @@ QUnit.module("Search", (hooks) => {
             model.toggleSearchItem(i + 1);
         }
     });
+
+    QUnit.test(
+        "no search items created for search panel sections",
+        async function (assert) {
+            const model = await makeSearchModel({
+                serverData,
+                searchViewArch: `
+                        <search>
+                            <searchpanel>
+                                <field name="company_id"/>
+                                <field name="company_id" select="multi"/>
+                            </searchpanel>
+                        </search>
+                    `,
+                resModel: "partner",
+                config: { viewType: "kanban" },
+            });
+            const sections = model.getSections();
+            assert.strictEqual(sections.length, 2);
+            assert.deepEqual(sanitizeSearchItems(model), []);
+        }
+    );
 });

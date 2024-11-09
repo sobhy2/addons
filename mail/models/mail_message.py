@@ -108,6 +108,7 @@ class Message(models.Model):
         ('email', 'Email'),
         ('comment', 'Comment'),
         ('notification', 'System notification'),
+        ('auto_comment', 'Automated Targeted Notification'),
         ('user_notification', 'User Specific Notification')],
         'Type', required=True, default='email',
         help="Message type: email for email message, notification for system "
@@ -133,7 +134,7 @@ class Message(models.Model):
     # mainly usefull for testing
     notified_partner_ids = fields.Many2many(
         'res.partner', 'mail_notification', string='Partners with Need Action',
-        context={'active_test': False}, depends=['notification_ids'])
+        context={'active_test': False}, depends=['notification_ids'], copy=False)
     needaction = fields.Boolean(
         'Need Action', compute='_compute_needaction', search='_search_needaction',
         help='Need Action')
@@ -190,10 +191,11 @@ class Message(models.Model):
     @api.depends_context('guest', 'uid')
     def _compute_is_current_user_or_guest_author(self):
         user = self.env.user
+        guest = self.env['mail.guest']._get_guest_from_context()
         for message in self:
             if not user._is_public() and (message.author_id and message.author_id == user.partner_id):
                 message.is_current_user_or_guest_author = True
-            elif user._is_public() and (message.author_guest_id and message.author_guest_id == self.env.context.get('guest')):
+            elif message.author_guest_id and message.author_guest_id == guest:
                 message.is_current_user_or_guest_author = True
             else:
                 message.is_current_user_or_guest_author = False
@@ -680,7 +682,7 @@ class Message(models.Model):
         thread._check_can_update_message_content(self)
         self.body = body
         if not attachment_ids:
-            self.attachment_ids.unlink()
+            self.attachment_ids._delete_and_notify()
         else:
             message_values = {
                 'model': self.model,
@@ -689,6 +691,8 @@ class Message(models.Model):
             }
             attachement_values = thread._message_post_process_attachments([], attachment_ids, message_values)
             self.update(attachement_values)
+        # Cleanup related message data if the message is empty
+        self.sudo()._filter_empty()._cleanup_side_records()
         thread._message_update_content_after_hook(self)
 
     def action_open_document(self):
@@ -711,9 +715,8 @@ class Message(models.Model):
         # not really efficient method: it does one db request for the
         # search, and one for each message in the result set is_read to True in the
         # current notifications from the relation.
-        partner_id = self.env.user.partner_id.id
         notif_domain = [
-            ('res_partner_id', '=', partner_id),
+            ('res_partner_id', '=', self.env.user.partner_id.id),
             ('is_read', '=', False)]
         if domain:
             messages = self.search(domain)
@@ -725,8 +728,10 @@ class Message(models.Model):
 
         ids = [n['mail_message_id'] for n in notifications.read(['mail_message_id'])]
 
-        notification = {'type': 'mark_as_read', 'message_ids': [id[0] for id in ids], 'needaction_inbox_counter': self.env.user.partner_id._get_needaction_count()}
-        self.env['bus.bus'].sendone((self._cr.dbname, 'res.partner', partner_id), notification)
+        self.env['bus.bus']._sendone(self.env.user.partner_id, 'mail.message/mark_as_read', {
+            'message_ids': [id[0] for id in ids],
+            'needaction_inbox_counter': self.env.user.partner_id._get_needaction_count(),
+        })
 
         return ids
 
@@ -745,13 +750,10 @@ class Message(models.Model):
         notifications.write({'is_read': True})
 
         # notifies changes in messages through the bus.
-        self.env['bus.bus'].sendone(
-            (self._cr.dbname, 'res.partner', partner_id.id),
-            {'type': 'mark_as_read',
-             'message_ids': notifications.mapped('mail_message_id').ids,
-             'needaction_inbox_counter': self.env.user.partner_id._get_needaction_count(),
-            }
-        )
+        self.env['bus.bus']._sendone(partner_id, 'mail.message/mark_as_read', {
+            'message_ids': notifications.mail_message_id.ids,
+            'needaction_inbox_counter': self.env.user.partner_id._get_needaction_count(),
+        })
 
     @api.model
     def unstar_all(self):
@@ -762,8 +764,10 @@ class Message(models.Model):
         starred_messages.write({'starred_partner_ids': [Command.unlink(partner_id)]})
 
         ids = [m.id for m in starred_messages]
-        notification = {'type': 'toggle_star', 'message_ids': ids, 'starred': False}
-        self.env['bus.bus'].sendone((self._cr.dbname, 'res.partner', self.env.user.partner_id.id), notification)
+        self.env['bus.bus']._sendone(self.env.user.partner_id, 'mail.message/toggle_star', {
+            'message_ids': ids,
+            'starred': False,
+        })
 
     def toggle_message_starred(self):
         """ Toggle messages as (un)starred. Technically, the notifications related
@@ -777,15 +781,17 @@ class Message(models.Model):
         else:
             self.sudo().write({'starred_partner_ids': [Command.unlink(self.env.user.partner_id.id)]})
 
-        notification = {'type': 'toggle_star', 'message_ids': [self.id], 'starred': starred}
-        self.env['bus.bus'].sendone((self._cr.dbname, 'res.partner', self.env.user.partner_id.id), notification)
+        self.env['bus.bus']._sendone(self.env.user.partner_id, 'mail.message/toggle_star', {
+            'message_ids': [self.id],
+            'starred': starred,
+        })
 
     def _message_add_reaction(self, content):
         self.ensure_one()
         self.check_access_rule('write')
         self.check_access_rights('write')
-        if self.env.user._is_public() and 'guest' in self.env.context:
-            guest = self.env.context.get('guest')
+        guest = self.env['mail.guest']._get_guest_from_context()
+        if self.env.user._is_public() and guest:
             partner = self.env['res.partner']
         else:
             guest = self.env['mail.guest']
@@ -804,8 +810,8 @@ class Message(models.Model):
         self.ensure_one()
         self.check_access_rule('write')
         self.check_access_rights('write')
-        if self.env.user._is_public() and 'guest' in self.env.context:
-            guest = self.env.context.get('guest')
+        guest = self.env['mail.guest']._get_guest_from_context()
+        if self.env.user._is_public() and guest:
             partner = self.env['res.partner']
         else:
             guest = self.env['mail.guest']
@@ -818,7 +824,7 @@ class Message(models.Model):
     # MESSAGE READ / FETCH / FAILURE API
     # ------------------------------------------------------
 
-    def _message_format(self, fnames):
+    def _message_format(self, fnames, format_reply=True):
         """Reads values from messages and formats them for the web client."""
         self.check_access_rule('read')
         vals_list = self._read_format(fnames)
@@ -837,13 +843,6 @@ class Message(models.Model):
             else:
                 author = (0, message_sudo.email_from)
 
-            # Attachments
-            main_attachment = self.env['ir.attachment']
-            if message_sudo.attachment_ids and message_sudo.res_id and issubclass(self.pool[message_sudo.model], self.pool['mail.thread']):
-                main_attachment = self.env[message_sudo.model].sudo().browse(message_sudo.res_id).message_main_attachment_id
-            attachments_formatted = message_sudo.attachment_ids._attachment_format()
-            for attachment in attachments_formatted:
-                attachment['is_main'] = attachment['id'] == main_attachment.id
             # Tracking values
             tracking_value_ids = []
             for tracking in message_sudo.tracking_value_ids:
@@ -874,7 +873,7 @@ class Message(models.Model):
                 })]
             else:
                 vals['author_id'] = author
-            reactions_per_content = defaultdict(lambda: self.env['mail.message.reaction'])
+            reactions_per_content = defaultdict(self.env['mail.message.reaction'].sudo().browse)
             for reaction in message_sudo.reaction_ids:
                 reactions_per_content[reaction.content] |= reaction
             reaction_groups = [('insert-and-replace', [{
@@ -884,9 +883,11 @@ class Message(models.Model):
                 'partners': [('insert-and-replace', [{'id': partner.id, 'name': partner.name} for partner in reactions.partner_id])],
                 'guests': [('insert-and-replace', [{'id': guest.id, 'name': guest.name} for guest in reactions.guest_id])],
             } for content, reactions in reactions_per_content.items()])]
+            if format_reply and message_sudo.model == 'mail.channel' and message_sudo.parent_id:
+                vals['parentMessage'] = message_sudo.parent_id.message_format(format_reply=False)[0]
             vals.update({
                 'notifications': message_sudo.notification_ids._filtered_for_web_client()._notification_format(),
-                'attachment_ids': attachments_formatted,
+                'attachment_ids': message_sudo.attachment_ids._attachment_format(),
                 'tracking_value_ids': tracking_value_ids,
                 'messageReactionGroups': reaction_groups,
                 'record_name': record_name,
@@ -909,7 +910,7 @@ class Message(models.Model):
             domain = expression.AND([domain, [('id', '>', min_id)]])
         return self.search(domain, limit=limit).message_format()
 
-    def message_format(self):
+    def message_format(self, format_reply=True):
         """ Get the message values in the format for web client. Since message values can be broadcasted,
             computed fields MUST NOT BE READ and broadcasted.
             :returns list(dict).
@@ -947,9 +948,10 @@ class Message(models.Model):
                     'is_note': True # only if the message is a note (subtype == note)
                     'is_discussion': False # only if the message is a discussion (subtype == discussion)
                     'is_notification': False # only if the message is a note but is a notification aka not linked to a document like assignation
+                    'parentMessage': {...}, # formatted message that this message is a reply to. Only present if format_reply is True
                 }
         """
-        vals_list = self._message_format(self._get_message_format_fields())
+        vals_list = self._message_format(self._get_message_format_fields(), format_reply=format_reply)
 
         com_id = self.env['ir.model.data']._xmlid_to_res_id('mail.mt_comment')
         note_id = self.env['ir.model.data']._xmlid_to_res_id('mail.mt_note')
@@ -964,6 +966,7 @@ class Message(models.Model):
                 'is_discussion': message_sudo.subtype_id.id == com_id,
                 'subtype_description': message_sudo.subtype_id.description,
                 'is_notification': vals['message_type'] == 'user_notification',
+                'recipients': [{'id': p.id, 'name': p.name} for p in message_sudo.partner_ids],
             })
             if vals['model'] and self.env[vals['model']]._original_module:
                 vals['module_icon'] = modules.module.get_module_icon(self.env[vals['model']]._original_module)
@@ -1019,15 +1022,33 @@ class Message(models.Model):
                 messages_per_partner[self.env.user.partner_id] |= message
             if message.author_id and not any(user._is_public() for user in message.author_id.with_context(active_test=False).user_ids):
                 messages_per_partner[message.author_id] |= message
-        updates = [[
-            (self._cr.dbname, 'res.partner', partner.id),
-            {'type': 'message_notification_update', 'elements': messages._message_notification_format()}
-        ] for partner, messages in messages_per_partner.items()]
-        self.env['bus.bus'].sendmany(updates)
+        updates = [
+            (partner, 'mail.message/notification_update', {'elements': messages._message_notification_format()})
+            for partner, messages in messages_per_partner.items()
+        ]
+        self.env['bus.bus']._sendmany(updates)
 
     # ------------------------------------------------------
     # TOOLS
     # ------------------------------------------------------
+
+    def _cleanup_side_records(self):
+        """ Clean related data: notifications, stars, ... to avoid lingering
+        notifications / unreachable counters with void messages notably. """
+        self.write({
+            'starred_partner_ids': [(5, 0, 0)],
+            'notification_ids': [(5, 0, 0)],
+        })
+
+    def _filter_empty(self):
+        """ Return subset of "void" messages """
+        return self.filtered(
+            lambda msg:
+                (not msg.body or tools.is_html_empty(msg.body)) and
+                (not msg.subtype_id or not msg.subtype_id.description) and
+                not msg.attachment_ids and
+                not msg.tracking_value_ids
+        )
 
     @api.model
     def _get_record_name(self, values):
@@ -1080,7 +1101,7 @@ class Message(models.Model):
         for record in self:
             model = model or record.model
             res_id = res_id or record.res_id
-            if issubclass(self.pool[model], self.pool['mail.thread']):
+            if model and issubclass(self.pool[model], self.pool['mail.thread']):
                 self.env[model].invalidate_cache(fnames=[
                     'message_ids',
                     'message_unread',

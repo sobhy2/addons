@@ -69,7 +69,7 @@
                          <div>The invoice will be processed asynchronously by the following E-invoicing service :
                             <field name="edi_web_services_to_process" class="oe_inline"/>
                          </div>
-                         <button name="action_process_edi_web_services" type="object" class="oe_link" string="Process now" /> 
+                         <button name="button_process_edi_web_services" type="object" class="oe_link" string="Process now" /> 
                     </div>
                     <div class="alert alert-danger" role="alert" style="margin-bottom:0px;"
                         attrs="{'invisible': ['|', ('edi_error_count', '=', 0), ('edi_blocking_level', '!=', 'error')]}">
@@ -108,6 +108,13 @@
                                 <field name="edi_format_name"/>
                                 <field name="state"/>
                                 <field name="error" invisible="1"/>
+                                <field name="blocking_level" invisible="1"/>
+                                <button name="action_export_xml"
+                                        type="object"
+                                        class="oe_link oe_inline"
+                                        string="Download"
+                                        groups="base.group_no_one"
+                                        attrs="{'invisible': ['|', ('error', '=', False), ('blocking_level', '=', 'info')]}"/>
                             </tree>
                         </field>
                     </page>

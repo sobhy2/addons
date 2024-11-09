@@ -4,9 +4,11 @@
 # 
 # Translators:
 # Martin Trigaux, 2021
-# Cécile Collart <cco@odoo.com>, 2021
-# Alexandra Jubert <aju@odoo.com>, 2021
+# Alexandra Jubert, 2021
 # Frédéric GILSON <frederic.gilson@logicasoft.eu>, 2021
+# Cécile Collart <cco@odoo.com>, 2021
+# Grégory Schreiner <gregory@mokatourisme.fr>, 2022
+# Jolien De Paepe, 2023
 # 
 msgid ""
 msgstr ""
@@ -14,13 +16,13 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-09-14 10:28+0000\n"
 "PO-Revision-Date: 2021-09-14 12:22+0000\n"
-"Last-Translator: Frédéric GILSON <frederic.gilson@logicasoft.eu>, 2021\n"
-"Language-Team: French (https://www.transifex.com/odoo/teams/41243/fr/)\n"
+"Last-Translator: Jolien De Paepe, 2023\n"
+"Language-Team: French (https://app.transifex.com/odoo/teams/41243/fr/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
 "Language: fr\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Plural-Forms: nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
 
 #. module: gift_card
 #: model:ir.model.fields,help:gift_card.field_product_product__detailed_type
@@ -37,7 +39,7 @@ msgstr ""
 #. module: gift_card
 #: model:ir.model.fields,field_description:gift_card.field_gift_card__balance
 msgid "Balance"
-msgstr "Balance"
+msgstr "Solde"
 
 #. module: gift_card
 #: model:ir.model.fields,field_description:gift_card.field_gift_card__code
@@ -68,12 +70,12 @@ msgstr "Devise"
 #: code:addons/gift_card/models/product.py:0
 #, python-format
 msgid "Deleting the Gift Card Pay product is not allowed."
-msgstr ""
+msgstr "La suppression du produit Gift Card Pay n'est pas autorisée."
 
 #. module: gift_card
 #: model:ir.model.fields,field_description:gift_card.field_gift_card__display_name
 msgid "Display Name"
-msgstr "Nom affiché"
+msgstr "Nom d'affichage"
 
 #. module: gift_card
 #: model:ir.model.fields.selection,name:gift_card.selection__gift_card__state__expired
@@ -101,7 +103,7 @@ msgstr "Cadeau #%s"
 #: model_terms:ir.ui.view,arch_db:gift_card.gift_card_view_search
 #: model_terms:ir.ui.view,arch_db:gift_card.gift_card_view_tree
 msgid "Gift Card"
-msgstr ""
+msgstr "Carte cadeau"
 
 #. module: gift_card
 #: model:ir.actions.act_window,name:gift_card.gift_card_action
@@ -116,12 +118,12 @@ msgstr "ID"
 #. module: gift_card
 #: model:ir.model.fields,help:gift_card.field_gift_card__partner_id
 msgid "If empty, all users can use it"
-msgstr ""
+msgstr "Si vide, tous les utilisateurs peuvent l'utiliser"
 
 #. module: gift_card
 #: model:ir.model.fields,field_description:gift_card.field_gift_card__initial_amount
 msgid "Initial Amount"
-msgstr ""
+msgstr "Montant initial"
 
 #. module: gift_card
 #: model:ir.model.fields,field_description:gift_card.field_gift_card____last_update
@@ -167,12 +169,12 @@ msgstr "État"
 #. module: gift_card
 #: model:ir.model.constraint,message:gift_card.constraint_gift_card_unique_gift_card_code
 msgid "The gift card code must be unique."
-msgstr ""
+msgstr "Le code de la carte-cadeau doit être unique."
 
 #. module: gift_card
 #: model:ir.model.constraint,message:gift_card.constraint_gift_card_check_amount
 msgid "The initial amount must be positive."
-msgstr ""
+msgstr "Le montant initial doit être positif."
 
 #. module: gift_card
 #: model:product.product,uom_name:gift_card.gift_card_product_50

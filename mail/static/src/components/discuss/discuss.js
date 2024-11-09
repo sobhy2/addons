@@ -26,8 +26,6 @@ export class Discuss extends Component {
         this.discuss.update({ isOpen: true });
         if (this.discuss.thread) {
             this.trigger('o-push-state-action-manager');
-        } else if (!this._activeThreadCache && this.discuss.messaging.isInitialized) {
-            this.discuss.openInitThread();
         }
         if (
             this.discuss.thread &&
@@ -38,7 +36,6 @@ export class Discuss extends Component {
         ) {
             this.trigger('o-show-rainbow-man');
         }
-        this._activeThreadCache = this.discuss.threadView && this.discuss.threadView.threadCache;
         this._updateLocalStoreProps();
     }
 
@@ -177,7 +174,6 @@ export class Discuss extends Component {
         if (this.discuss.activeMobileNavbarTabId === ev.detail.tabId) {
             return;
         }
-        this.discuss.clearReplyingToMessage();
         this.discuss.update({ activeMobileNavbarTabId: ev.detail.tabId });
         if (
             this.discuss.activeMobileNavbarTabId === 'mailbox' &&

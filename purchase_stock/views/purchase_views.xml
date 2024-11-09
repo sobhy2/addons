@@ -52,6 +52,9 @@
             <xpath expr="//field[@name='order_line']/form//field[@name='account_analytic_id']" position="before">
                 <field name="propagate_cancel" groups="base.group_no_one"/>
             </xpath>
+            <xpath expr="//field[@name='order_line']/tree//field[@name='account_analytic_id']" position="before">
+                <field name="propagate_cancel" groups="base.group_no_one" optional="hide"/>
+            </xpath>
             <xpath expr="//field[@name='order_line']/tree//field[@name='qty_received']" position="attributes">
                 <attribute name="attrs">{'column_invisible': [('parent.state', 'not in', ('purchase', 'done'))], 'readonly': [('product_type', 'in', ('consu', 'product'))]}</attribute>
             </xpath>
@@ -59,7 +62,7 @@
                 <field name="default_location_dest_id_usage" invisible="1"/>
                 <field name="incoterm_id"/>
             </xpath>
-            <xpath expr="//field[@name='origin']" position="after">
+            <xpath expr="//div[@name='reminder']" position="after">
                 <field name="picking_type_id" domain="[('code','=','incoming'), '|', ('warehouse_id', '=', False), ('warehouse_id.company_id', '=', company_id)]" options="{'no_create': True}" groups="stock.group_stock_multi_locations"/>
                 <field name="dest_address_id" groups="stock.group_stock_multi_locations" attrs="{'invisible': [('default_location_dest_id_usage', '!=', 'customer')], 'required': [('default_location_dest_id_usage', '=', 'customer')]}"/>
             </xpath>

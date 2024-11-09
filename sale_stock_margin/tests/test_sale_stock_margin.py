@@ -3,16 +3,18 @@
 
 from odoo import fields
 
-from odoo.tests.common import Form
+from odoo.tests import Form, tagged
 from odoo.addons.stock_account.tests.test_stockvaluationlayer import TestStockValuationCommon
 
 
+@tagged('post_install', '-at_install')
 class TestSaleStockMargin(TestStockValuationCommon):
 
     @classmethod
     def setUpClass(cls):
         super(TestSaleStockMargin, cls).setUpClass()
         cls.pricelist = cls.env['product.pricelist'].create({'name': 'Simple Pricelist'})
+        cls.env['res.currency.rate'].search([]).unlink()
 
     #########
     # UTILS #
@@ -166,6 +168,36 @@ class TestSaleStockMargin(TestStockValuationCommon):
         self.assertAlmostEqual(order_line_2.margin, 30)               # (20 - 12.5) * 4
         self.assertAlmostEqual(sale_order.margin, 64)
 
+    def test_sale_stock_margin_6(self):
+        """ Test that the purchase price doesn't change when there is a service product in the SO"""
+        service = self.env['product.product'].create({
+            'name': 'Service',
+            'type': 'service',
+            'list_price': 100.0,
+            'standard_price': 50.0})
+        self.product1.list_price = 80.0
+        self.product1.standard_price = 40.0
+        sale_order = self._create_sale_order()
+        order_line_1 = self._create_sale_order_line(sale_order, service, 1, 100)
+        order_line_2 = self._create_sale_order_line(sale_order, self.product1, 1, 80)
+
+        self.assertEqual(order_line_1.purchase_price, 50, "Sales order line cost should be 50.00")
+        self.assertEqual(order_line_2.purchase_price, 40, "Sales order line cost should be 40.00")
+
+        self.assertEqual(order_line_1.margin, 50, "Sales order line profit should be 50.00")
+        self.assertEqual(order_line_2.margin, 40, "Sales order line profit should be 40.00")
+        self.assertEqual(sale_order.margin, 90, "Sales order profit should be 90.00")
+
+        # Change the purchase price of the service product.
+        order_line_1.purchase_price = 100.0
+        self.assertEqual(order_line_1.purchase_price, 100, "Sales order line cost should be 100.00")
+
+        # Confirm the sales order.
+        sale_order.action_confirm()
+
+        self.assertEqual(order_line_1.purchase_price, 100, "Sales order line cost should be 100.00")
+        self.assertEqual(order_line_2.purchase_price, 40, "Sales order line cost should be 40.00")
+
     def test_so_and_multicurrency(self):
         ResCurrencyRate = self.env['res.currency.rate']
         company_currency = self.env.company.currency_id
@@ -200,3 +232,85 @@ class TestSaleStockMargin(TestStockValuationCommon):
         so.action_confirm()
         self.assertEqual(so_line.purchase_price, 200)
         self.assertEqual(so_line.price_unit, 400)
+
+    def test_so_and_multicompany(self):
+        """ In a multicompany environnement, when the user is on company C01 and confirms a SO that
+        belongs to a second company C02, this test ensures that the computations will be based on
+        C02's data"""
+        main_company = self.env['res.company']._get_main_company()
+        main_company_currency = main_company.currency_id
+        new_company_currency = self.env.ref('base.EUR') if main_company_currency == self.env.ref('base.USD') else self.env.ref('base.USD')
+
+        date = fields.Date.today()
+        self.env['res.currency.rate'].create([
+            {'currency_id': main_company_currency.id, 'rate': 1, 'name': date, 'company_id': False},
+            {'currency_id': new_company_currency.id, 'rate': 3, 'name': date, 'company_id': False},
+        ])
+
+        new_company = self.env['res.company'].create({
+            'name': 'Super Company',
+            'currency_id': new_company_currency.id,
+        })
+        self.env.user.company_id = new_company.id
+
+        self.pricelist.currency_id = new_company_currency.id
+
+        product = self._create_product()
+
+        incoming_picking_type = self.env['stock.picking.type'].search([('company_id', '=', new_company.id), ('code', '=', 'incoming')], limit=1)
+        production_location = self.env['stock.location'].search([('company_id', '=', new_company.id), ('usage', '=', 'production')])
+
+        picking = self.env['stock.picking'].create({
+            'picking_type_id': incoming_picking_type.id,
+            'location_id': production_location.id,
+            'location_dest_id': incoming_picking_type.default_location_dest_id.id,
+        })
+        self.env['stock.move'].create({
+            'name': 'Incoming Product',
+            'product_id': product.id,
+            'location_id': production_location.id,
+            'location_dest_id': incoming_picking_type.default_location_dest_id.id,
+            'product_uom': product.uom_id.id,
+            'product_uom_qty': 1,
+            'price_unit': 100,
+            'picking_type_id': incoming_picking_type.id,
+            'picking_id': picking.id,
+        })
+        picking.action_confirm()
+        res_dict = picking.button_validate()
+        wizard = Form(self.env[(res_dict.get('res_model'))].with_context(res_dict['context'])).save()
+        wizard.process()
+
+        self.pricelist.currency_id = new_company_currency.id
+        partner = self.env['res.partner'].create({'name': 'Super Partner'})
+        so = self.env['sale.order'].create({
+            'name': 'Sale order',
+            'partner_id': partner.id,
+            'partner_invoice_id': partner.id,
+            'pricelist_id': self.pricelist.id,
+        })
+        sol = self._create_sale_order_line(so, product, 1, price_unit=200)
+
+        self.env.user.company_id = main_company.id
+        so.action_confirm()
+
+        self.assertEqual(sol.purchase_price, 100)
+        self.assertEqual(sol.margin, 100)
+
+    def test_purchase_price_changes(self):
+        so = self._create_sale_order()
+        product = self._create_product()
+        product.categ_id.property_cost_method = 'standard'
+        product.standard_price = 20
+        self._create_sale_order_line(so, product, 1, product.list_price)
+
+        so_form = Form(so)
+        with so_form.order_line.edit(0) as line:
+            line.purchase_price = 15
+        so = so_form.save()
+        email_act = so.action_quotation_send()
+        email_ctx = email_act.get('context', {})
+        so.with_context(**email_ctx).message_post_with_template(email_ctx.get('default_template_id'))
+
+        self.assertEqual(so.state, 'sent')
+        self.assertEqual(so.order_line[0].purchase_price, 15)

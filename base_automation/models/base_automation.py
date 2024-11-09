@@ -218,8 +218,8 @@ class BaseAutomation(models.Model):
         """ Filter the records that satisfy the postcondition of action ``self``. """
         self_sudo = self.sudo()
         if self_sudo.filter_domain and records:
-            domain = [('id', 'in', records.ids)] + safe_eval.safe_eval(self_sudo.filter_domain, self._get_eval_context())
-            return records.sudo().search(domain).with_env(records.env), domain
+            domain = safe_eval.safe_eval(self_sudo.filter_domain, self._get_eval_context())
+            return records.sudo().filtered_domain(domain).with_env(records.env), domain
         else:
             return records, None
 
@@ -230,7 +230,7 @@ class BaseAutomation(models.Model):
             e.context['exception_class'] = 'base_automation'
             e.context['base_automation'] = {
                 'id': self.id,
-                'name': self.name,
+                'name': self.sudo().name,
             }
 
     def _process(self, records, domain_post=None):
@@ -256,7 +256,8 @@ class BaseAutomation(models.Model):
             records.write(values)
 
         # execute server actions
-        if self.action_server_id:
+        action_server = self.action_server_id
+        if action_server:
             for record in records:
                 # we process the action if any watched field has been modified
                 if self._check_trigger_fields(record):
@@ -267,7 +268,7 @@ class BaseAutomation(models.Model):
                         'domain_post': domain_post,
                     }
                     try:
-                        self.action_server_id.sudo().with_context(**ctx).run()
+                        action_server.sudo().with_context(**ctx).run()
                     except Exception as e:
                         self._add_postmortem_action(e)
                         raise e
@@ -341,7 +342,7 @@ class BaseAutomation(models.Model):
                     for old_vals in (records.read(list(vals)) if vals else [])
                 }
                 # call original method
-                write.origin(records, vals, **kw)
+                write.origin(self.with_env(actions.env), vals, **kw)
                 # check postconditions, and execute actions on the records that satisfy them
                 for action in actions.with_context(old_values=old_values):
                     records, domain_post = action._filter_post_export_domain(pre[action])
@@ -431,7 +432,12 @@ class BaseAutomation(models.Model):
             """ Patch method `name` on `model`, unless it has been patched already. """
             if model not in patched_models[name]:
                 patched_models[name].add(model)
-                model._patch_method(name, method)
+                ModelClass = model.env.registry[model._name]
+                origin = getattr(ModelClass, name)
+                method.origin = origin
+                wrapped = api.propagate(origin, method)
+                wrapped.origin = origin
+                setattr(ModelClass, name, wrapped)
 
         # retrieve all actions, and patch their corresponding model
         for action_rule in self.with_context({}).search([]):
@@ -477,8 +483,8 @@ class BaseAutomation(models.Model):
 
     @api.model
     def _check_delay(self, action, record, record_dt):
-        if action.trg_date_calendar_id and action.trg_date_range_type == 'day':
-            return action.trg_date_calendar_id.plan_days(
+        if self._get_calendar(action, record) and action.trg_date_range_type == 'day':
+            return self._get_calendar(action, record).plan_days(
                 action.trg_date_range,
                 fields.Datetime.from_string(record_dt),
                 compute_leaves=True,
@@ -486,6 +492,10 @@ class BaseAutomation(models.Model):
         else:
             delay = DATE_RANGE_FUNCTION[action.trg_date_range_type](action.trg_date_range)
             return fields.Datetime.from_string(record_dt) + delay
+
+    @api.model
+    def _get_calendar(self, action, record):
+        return action.trg_date_calendar_id
 
     @api.model
     def _check(self, automatic=False, use_new_cursor=False):
@@ -514,12 +524,29 @@ class BaseAutomation(models.Model):
 
             # process action on the records that should be executed
             now = datetime.datetime.now()
+            past_now = {}
+            past_last_run = {}
             for record in records:
                 record_dt = get_record_dt(record)
                 if not record_dt:
                     continue
-                action_dt = self._check_delay(action, record, record_dt)
-                if last_run <= action_dt < now:
+                if action.trg_date_calendar_id and action.trg_date_range_type == 'day':
+                    calendar = self._get_calendar(action, record)
+                    if calendar.id not in past_now:
+                        past_now[calendar.id] = calendar.plan_days(
+                            - action.trg_date_range,
+                            now,
+                            compute_leaves=True,
+                        )
+                        past_last_run[calendar.id] = calendar.plan_days(
+                            - action.trg_date_range,
+                            last_run,
+                            compute_leaves=True,
+                        )
+                    is_process_to_run = past_last_run[calendar.id] <= fields.Datetime.to_datetime(record_dt) < past_now[calendar.id]
+                else:
+                    is_process_to_run = last_run <= self._check_delay(action, record, record_dt) < now
+                if is_process_to_run:
                     try:
                         action._process(record)
                     except Exception:

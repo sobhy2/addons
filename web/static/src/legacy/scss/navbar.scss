@@ -104,10 +104,16 @@
       @include border-top-radius(0);
     }
 
-    .o_dropdown_menu_group_entry {
-      > .dropdown-item {
-        padding-left: $o-dropdown-hpadding * 1.5;
-      }
+    .dropdown-menu_group {
+      margin-top: 0;
+    }
+
+    .dropdown-item + .dropdown-header:not(.o_more_dropdown_section_group) {
+      margin-top: .3em;
+    }
+
+    .o_dropdown_menu_group_entry.dropdown-item {
+      padding-left: $o-dropdown-hpadding * 1.5;
 
       + .dropdown-item:not(.o_dropdown_menu_group_entry) {
         margin-top: .8em;

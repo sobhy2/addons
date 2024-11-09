@@ -79,6 +79,7 @@ function factory(dependencies) {
             }
             if ('message_type' in data) {
                 data2.message_type = data.message_type;
+                data2.is_automated_message = data.message_type === 'auto_message';
             }
             if ('model' in data && 'res_id' in data && data.model && data.res_id) {
                 const originThreadData = {
@@ -104,8 +105,18 @@ function factory(dependencies) {
                     this.messaging.models['mail.notification'].convertData(notificationData)
                 ));
             }
+            if ('parentMessage' in data) {
+                if (!data.parentMessage) {
+                    data2.parentMessage = clear();
+                } else {
+                    data2.parentMessage = insertAndReplace(this.convertData(data.parentMessage));
+                }
+            }
             if ('partner_ids' in data && this.messaging.currentPartner) {
-                data2.isCurrentPartnerMentioned = data.partner_ids.includes(this.messaging.currentPartner.id);
+                data2.recipients = insertAndReplace(data.partner_ids.map(partner_id => ({ id: partner_id })));
+            }
+            if ('recipients' in data) {
+                data2.recipients = insertAndReplace(data.recipients);
             }
             if ('starred_partner_ids' in data && this.messaging.currentPartner) {
                 data2.isStarred = data.starred_partner_ids.includes(this.messaging.currentPartner.id);
@@ -269,14 +280,6 @@ function factory(dependencies) {
         }
 
         /**
-         * Action to initiate reply to current message in Discuss Inbox. Assumes
-         * that Discuss and Inbox are already opened.
-         */
-        replyTo() {
-            this.messaging.discuss.replyToMessage(this);
-        }
-
-        /**
          * Toggle the starred status of the provided message.
          */
         async toggleStar() {
@@ -292,13 +295,16 @@ function factory(dependencies) {
          *
          * @param {Object} param0
          * @param {string} param0.body the new body of the message
+         * @param {number[]} param0.attachment_ids
+         * @param {string[]} param0.attachment_tokens
          */
-        async updateContent({ body, attachment_ids }) {
+        async updateContent({ body, attachment_ids, attachment_tokens }) {
             const messageData = await this.env.services.rpc({
                 route: '/mail/message/update_content',
                 params: {
                     body,
                     attachment_ids,
+                    attachment_tokens,
                     message_id: this.id,
                 },
             });
@@ -313,6 +319,22 @@ function factory(dependencies) {
         //----------------------------------------------------------------------
 
         /**
+         * @returns {string|FieldCommand}
+         */
+        _computeAuthorName() {
+            if (this.author) {
+                return this.author.nameOrDisplayName;
+            }
+            if (this.guestAuthor) {
+                return this.guestAuthor.name;
+            }
+            if (this.email_from) {
+                return this.email_from;
+            }
+            return this.env._t("Anonymous");
+        }
+
+        /**
          * @returns {boolean}
          */
         _computeCanBeDeleted() {
@@ -325,8 +347,11 @@ function factory(dependencies) {
             if (this.tracking_value_ids.length > 0) {
                 return false;
             }
+            if (this.message_type !== 'comment') {
+                return false;
+            }
             if (this.originThread.model === 'mail.channel') {
-                return this.message_type === 'comment';
+                return true;
             }
             return this.is_note;
         }
@@ -383,6 +408,21 @@ function factory(dependencies) {
          * @private
          * @returns {boolean}
          */
+        _computeHasAttachments() {
+            return this.attachments.length > 0;
+        }
+
+        /**
+         * @returns {boolean}
+         */
+        _computeHasReactionIcon() {
+            return !this.isTemporary && !this.isTransient;
+        }
+
+        /**
+         * @private
+         * @returns {boolean}
+         */
         _computeIsCurrentUserOrGuestAuthor() {
             return !!(
                 this.author &&
@@ -399,12 +439,36 @@ function factory(dependencies) {
          * @private
          * @returns {boolean}
          */
+        _computeIsBodyEmpty() {
+            return (
+                !this.body ||
+                [
+                    '',
+                    '<p></p>',
+                    '<p><br></p>',
+                    '<p><br/></p>',
+                ].includes(this.body.replace(/\s/g, ''))
+            );
+        }
+
+        /**
+         * @private
+         * @returns {boolean}
+         */
         _computeIsBodyEqualSubtypeDescription() {
             if (!this.body || !this.subtype_description) {
                 return false;
             }
             const inlineBody = htmlToTextContentInline(this.body);
             return inlineBody.toLowerCase() === this.subtype_description.toLowerCase();
+        }
+
+        /**
+         * @private
+         * @returns {boolean}
+         */
+        _computeIsCurrentPartnerMentioned() {
+            return this.recipients.includes(this.messaging.currentPartner);
         }
 
         /**
@@ -425,18 +489,9 @@ function factory(dependencies) {
          * @returns {boolean}
          */
         _computeIsEmpty() {
-            const isBodyEmpty = (
-                !this.body ||
-                [
-                    '',
-                    '<p></p>',
-                    '<p><br></p>',
-                    '<p><br/></p>',
-                ].includes(this.body.replace(/\s/g, ''))
-            );
             return (
-                isBodyEmpty &&
-                this.attachments.length === 0 &&
+                this.isBodyEmpty &&
+                !this.hasAttachments &&
                 this.tracking_value_ids.length === 0 &&
                 !this.subtype_description
             );
@@ -487,6 +542,23 @@ function factory(dependencies) {
         }
 
         /**
+         * @private
+         * @returns {string}
+         */
+        _computeMessageTypeText() {
+            if (this.message_type === 'notification') {
+                return this.env._t("System notification");
+            }
+            if (this.message_type === "auto_comment") {
+                return this.env._t("Automated Targeted Notification");
+            }
+            if (!this.is_discussion && !this.is_notification) {
+                return this.env._t("Note");
+            }
+            return this.env._t("Message");
+        }
+
+        /**
          * This value is meant to be based on field body which is
          * returned by the server (and has been sanitized before stored into db).
          * Do not use this value in a 't-raw' if the message has been created
@@ -496,6 +568,10 @@ function factory(dependencies) {
          * @returns {string}
          */
         _computePrettyBody() {
+            if (!this.body) {
+                // body null in db, body will be false instead of empty string
+                return clear();
+            }
             let prettyBody;
             for (const emoji of emojis) {
                 const { unicode } = emoji;
@@ -545,6 +621,9 @@ function factory(dependencies) {
     }
 
     Message.fields = {
+        authorName: attr({
+            compute: '_computeAuthorName',
+        }),
         attachments: many2many('mail.attachment', {
             inverse: 'messages',
         }),
@@ -596,6 +675,18 @@ function factory(dependencies) {
         guestAuthor: many2one('mail.guest', {
             inverse: 'authoredMessages',
         }),
+        /**
+         * States whether the message has some attachments.
+         */
+        hasAttachments: attr({
+            compute: '_computeHasAttachments',
+        }),
+        /**
+         * Determines whether the message has a reaction icon.
+         */
+        hasReactionIcon: attr({
+            compute: '_computeHasReactionIcon',
+        }),
         id: attr({
             readonly: true,
             required: true,
@@ -603,6 +694,14 @@ function factory(dependencies) {
         isCurrentUserOrGuestAuthor: attr({
             compute: '_computeIsCurrentUserOrGuestAuthor',
             default: false,
+        }),
+        /**
+         * States if the body field is empty, regardless of editor default
+         * html content. To determine if a message is fully empty, use
+         * `isEmpty`.
+         */
+        isBodyEmpty: attr({
+            compute: '_computeIsBodyEmpty',
         }),
         /**
          * States whether `body` and `subtype_description` contain similar
@@ -653,6 +752,9 @@ function factory(dependencies) {
         isTransient: attr({
             default: false,
         }),
+        is_automated_message: attr({
+            default: false,
+        }),
         is_discussion: attr({
             default: false,
         }),
@@ -680,6 +782,7 @@ function factory(dependencies) {
          * Determine whether the current partner is mentioned.
          */
         isCurrentPartnerMentioned: attr({
+            compute: '_computeIsCurrentPartnerMentioned',
             default: false,
         }),
         /**
@@ -694,6 +797,9 @@ function factory(dependencies) {
          */
         isStarred: attr({
             default: false,
+        }),
+        messageTypeText: attr({
+            compute: '_computeMessageTypeText',
         }),
         /**
          * Groups of reactions per content allowing to know the number of
@@ -726,6 +832,13 @@ function factory(dependencies) {
             inverse: 'messagesAsOriginThread',
         }),
         /**
+         * States the message that this message replies to (if any). Only makes
+         * sense on channels. Other types of threads might have a parent message
+         * (parent_id in python) that should be ignored for the purpose of this
+         * feature.
+         */
+        parentMessage: many2one('mail.message'),
+        /**
          * This value is meant to be based on field body which is
          * returned by the server (and has been sanitized before stored into db).
          * Do not use this value in a 't-raw' if the message has been created
@@ -733,7 +846,9 @@ function factory(dependencies) {
          */
         prettyBody: attr({
             compute: '_computePrettyBody',
+            default: "",
         }),
+        recipients: many2many('mail.partner'),
         subject: attr(),
         subtype_description: attr(),
         subtype_id: attr(),

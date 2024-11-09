@@ -53,11 +53,11 @@
 }
 
 // use selector specificity to override bootstrap style
-input.o_ThreadViewTopBar_guestNameInput {
+input.o_ThreadViewTopbar_guestNameInput {
     width: 150px;
 }
 
-.o_ThreadViewTopbar_invitePopover .popover-body {
+.o_ThreadViewTopbar_invitePopoverView .popover-body {
     padding: 0; // cancel unwanted padding
 }
 
@@ -99,7 +99,7 @@ input.o_ThreadViewTopBar_guestNameInput {
     }
 }
 
-.o_ThreadViewTopBar_userName {
+.o_ThreadViewTopbar_userName {
     &:not(.o-userNameEditable) {
         border-color: transparent;
     }

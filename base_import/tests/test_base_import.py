@@ -383,7 +383,7 @@ class TestPreview(TransactionCase):
         ])
         self.assertEqual(result['preview'], [['foo', 'bar', 'qux'], ['1', '3', '5'], ['2', '4', '6']])
 
-    @unittest.skipUnless(can_import('xlrd.xlsx'), "XLRD/XLSX not available")
+    @unittest.skipUnless(can_import('xlrd.xlsx') or can_import('openpyxl'), "XLRD/XLSX not available")
     def test_xlsx_success(self):
         xlsx_file_path = get_module_resource('base_import', 'tests', 'test.xlsx')
         file_content = open(xlsx_file_path, 'rb').read()
@@ -429,7 +429,7 @@ class TestPreview(TransactionCase):
             {'id': 'somevalue', 'name': 'somevalue', 'string': 'Some Value', 'required': True, 'fields': [], 'type': 'integer', 'model_name': 'base_import.tests.models.preview'},
             {'id': 'othervalue', 'name': 'othervalue', 'string': 'Other Variable', 'required': False, 'fields': [], 'type': 'integer', 'model_name': 'base_import.tests.models.preview'},
         ])
-        self.assertEqual(result['preview'], ['foo', '1', '2'])
+        self.assertEqual(result['preview'], [['foo', 'bar', 'aux'], ['1', '3', '5'], ['2', '4', '6']])
 
 
 class test_convert_import_data(TransactionCase):
@@ -477,6 +477,35 @@ class test_convert_import_data(TransactionCase):
                 'separator': ',',
                 'has_headers': True
             }
+        )
+
+        # if results empty, no errors
+        self.assertItemsEqual(results['messages'], [])
+
+    def test_date_fields_no_options(self):
+        import_wizard = self.env['base_import.import'].with_context(lang='de_DE').create({
+            'res_model': 'res.partner',
+            'file': 'name,date,create_date\n'
+                    '"foo","15.10.2023","15.10.2023 15:15:15"\n'.encode('utf-8'),
+            'file_type': 'text/csv',
+        })
+
+        opts = {
+            'date_format': '',
+            'datetime_format': '',
+            'quoting': '"',
+            'separator': ',',
+            'float_decimal_separator': '.',
+            'float_thousand_separator': ',',
+            'has_headers': True
+        }
+        result_parse = import_wizard.parse_preview({**opts})
+
+        opts = result_parse['options']
+        results = import_wizard.execute_import(
+            ['name', 'date', 'create_date'],
+            [],
+            {**opts}
         )
 
         # if results empty, no errors
@@ -707,6 +736,57 @@ foo3,US,0,persons\n""",
         # if results empty, no errors
         self.assertItemsEqual(results['messages'], [])
 
+    def test_multi_mapping(self):
+        """ Test meant specifically for the '_handle_multi_mapping' that allows mapping multiple
+        columns to the same field and merging the values together.
+
+        It makes sure that values of type Char and Many2many are correctly merged. """
+
+        tag1, tag2, tag3 = self.env['res.partner.category'].create([{
+            'name': 'tag1',
+        }, {
+            'name': 'tag2',
+        }, {
+            'name': 'tag3',
+        }])
+
+        file_partner_values = [
+            ['Mitchel', 'US', 'Admin', 'The Admin User', 'tag1,tag2', 'tag3'],
+            ['Marc', 'US', 'Demo', 'The Demo User', '', 'tag3'],
+            ['Joel', 'US', 'Portal', '', 'tag1', 'tag3'],
+        ]
+
+        existing_partners = self.env['res.partner'].search_read([], ['id'])
+        import_wizard = self.env['base_import.import'].create({
+            'res_model': 'res.partner',
+            'file': '\n'.join([';'.join(partner_values) for partner_values in file_partner_values]),
+            'file_type': 'text/csv',
+        })
+
+        results = import_wizard.execute_import(
+            ['name', 'country_id', 'name', 'name', 'category_id', 'category_id'],
+            [],
+            {
+                'quoting': '"',
+                'separator': ';',
+            },
+        )
+
+        # if result is empty, no import error
+        self.assertItemsEqual(results['messages'], [])
+
+        partners = self.env['res.partner'].search([
+            ('id', 'not in', [existing_partner['id'] for existing_partner in existing_partners])
+        ], order='id asc')
+
+        self.assertEqual(3, len(partners))
+        self.assertEqual('Mitchel Admin The Admin User', partners[0].name)
+        self.assertEqual('Marc Demo The Demo User', partners[1].name)
+        self.assertEqual('Joel Portal', partners[2].name)
+
+        self.assertEqual(tag1 | tag2 | tag3, partners[0].category_id)
+        self.assertEqual(tag3, partners[1].category_id)
+        self.assertEqual(tag1 | tag3, partners[2].category_id)
 
 class TestBatching(TransactionCase):
     def _makefile(self, rows):

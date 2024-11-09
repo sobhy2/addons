@@ -27,7 +27,7 @@ class AccountAnalyticLine(models.Model):
     timesheet_invoice_id = fields.Many2one('account.move', string="Invoice", readonly=True, copy=False, help="Invoice created from the timesheet")
     so_line = fields.Many2one(compute="_compute_so_line", store=True, readonly=False, domain="[('is_service', '=', True), ('is_expense', '=', False), ('state', 'in', ['sale', 'done']), ('order_partner_id', 'child_of', commercial_partner_id)]")
     # we needed to store it only in order to be able to groupby in the portal
-    order_id = fields.Many2one(related='so_line.order_id', store=True, readonly=False)
+    order_id = fields.Many2one(related='so_line.order_id', store=True, readonly=True)
     is_so_line_edited = fields.Boolean("Is Sales Order Item Manually Edited")
 
     @api.depends('project_id.commercial_partner_id', 'task_id.commercial_partner_id')
@@ -38,8 +38,8 @@ class AccountAnalyticLine(models.Model):
     # When user edit Sale Order Item(so_line) for timesheet make is_so_line_edited field true
     @api.onchange('so_line')
     def _onchange_so_line(self):
-        if not self.is_so_line_edited:
-            self.is_so_line_edited = True
+        # TODO: [XBO] remove me in master
+        return
 
     @api.depends('so_line.product_id', 'project_id', 'amount')
     def _compute_timesheet_invoice_type(self):
@@ -65,6 +65,14 @@ class AccountAnalyticLine(models.Model):
     def _compute_so_line(self):
         for timesheet in self.filtered(lambda t: not t.is_so_line_edited and t._is_not_billed()):  # Get only the timesheets are not yet invoiced
             timesheet.so_line = timesheet.project_id.allow_billable and timesheet._timesheet_determine_sale_line()
+    
+    @api.depends('timesheet_invoice_id.state')
+    def _compute_partner_id(self):
+        super(AccountAnalyticLine, self.filtered(lambda t: t._is_not_billed()))._compute_partner_id()
+
+    @api.depends('timesheet_invoice_id.state')
+    def _compute_project_id(self):
+        super(AccountAnalyticLine, self.filtered(lambda t: t._is_not_billed()))._compute_project_id()
 
     def _is_not_billed(self):
         self.ensure_one()
@@ -86,13 +94,8 @@ class AccountAnalyticLine(models.Model):
 
     @api.model
     def _timesheet_preprocess(self, values):
-        if values.get('task_id') and not values.get('account_id'):
-            task = self.env['project.task'].browse(values.get('task_id'))
-            if task.analytic_account_id:
-                values['account_id'] = task.analytic_account_id.id
-                values['company_id'] = task.analytic_account_id.company_id.id
-        values = super(AccountAnalyticLine, self)._timesheet_preprocess(values)
-        return values
+        # TODO: remove me in master
+        return super()._timesheet_preprocess(values)
 
     def _timesheet_determine_sale_line(self):
         """ Deduce the SO line associated to the timesheet line:
@@ -144,7 +147,9 @@ class AccountAnalyticLine(models.Model):
             ('timesheet_invoice_type', 'in', ['billable_time', 'non_billable']),
             '&',
             ('timesheet_invoice_type', '=', 'billable_fixed'),
-            ('so_line', 'in', order_lines_ids.ids)
+                '&',
+                ('so_line', 'in', order_lines_ids.ids),
+                ('timesheet_invoice_id', '=', False),
         ]
 
     def _get_timesheets_to_merge(self):
@@ -158,7 +163,7 @@ class AccountAnalyticLine(models.Model):
 
     def _get_employee_mapping_entry(self):
         self.ensure_one()
-        return self.env['project.sale.line.employee.map'].search([('project_id', '=', self.project_id.id), ('employee_id', '=', self.employee_id.id)])
+        return self.env['project.sale.line.employee.map'].search([('project_id', '=', self.project_id.id), ('employee_id', '=', self.employee_id.id or self.env.user.employee_id.id)])
 
     def _employee_timesheet_cost(self):
         if self.project_id.pricing_type == 'employee_rate':
@@ -166,3 +171,7 @@ class AccountAnalyticLine(models.Model):
             if mapping_entry:
                 return mapping_entry.cost
         return super()._employee_timesheet_cost()
+
+    def _timesheet_convert_sol_uom(self, sol, to_unit):
+        to_uom = self.env.ref(to_unit)
+        return round(sol.product_uom._compute_quantity(sol.product_uom_qty, to_uom, raise_if_failure=False), 2)

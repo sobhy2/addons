@@ -32,11 +32,11 @@ class EventEvent(models.Model):
 
         When synchronizing questions:
 
-          * lines that no answer are removed;
+          * lines with no registered answers are removed;
           * type lines are added;
         """
         if self._origin.question_ids:
-            # lines to keep: those with already sent emails or registrations
+            # lines to keep: those with already given answers
             questions_tokeep_ids = self.env['event.registration.answer'].search(
                 [('question_id', 'in', self._origin.question_ids.ids)]
             ).question_id.ids
@@ -52,17 +52,8 @@ class EventEvent(models.Model):
                 command = [(3, question.id) for question in questions_toremove]
             else:
                 command = [(5, 0)]
-            if event.event_type_id.event_type_mail_ids:
-                command += [
-                    (0, 0, {
-                        'title': question.title,
-                        'question_type': question.question_type,
-                        'sequence': question.sequence,
-                        'once_per_order': question.once_per_order,
-                        'answer_ids': [(0, 0, {
-                            'name': answer.name,
-                            'sequence': answer.sequence
-                        }) for answer in question.answer_ids],
-                    }) for question in event.event_type_id.question_ids
-                ]
             event.question_ids = command
+
+            # copy questions so changes in the event don't affect the event type
+            for question in event.event_type_id.question_ids:
+                event.question_ids += question.copy({'event_type_id': False})

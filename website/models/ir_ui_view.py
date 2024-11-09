@@ -2,13 +2,12 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
-import os
 import uuid
 import werkzeug
 
 from odoo import api, fields, models
 from odoo import tools
-from odoo.addons import website
+from odoo.addons.website.tools import add_form_signature
 from odoo.exceptions import AccessError
 from odoo.osv import expression
 from odoo.http import request
@@ -97,11 +96,24 @@ class View(models.Model):
         # We need to consider inactive views when handling multi-website cow
         # feature (to copy inactive children views, to search for specific
         # views, ...)
-        for view in self.with_context(active_test=False):
+        # Website-specific views need to be updated first because they might
+        # be relocated to new ids by the cow if they are involved in the
+        # inheritance tree.
+        for view in self.with_context(active_test=False).sorted(key='website_id', reverse=True):
             # Make sure views which are written in a website context receive
             # a value for their 'key' field
             if not view.key and not vals.get('key'):
                 view.with_context(no_cow=True).key = 'website.key_%s' % str(uuid.uuid4())[:6]
+
+            pages = view.page_ids
+
+            # Disable cache of page if we guess some dynamic content (form with csrf, ...)
+            if vals.get('arch'):
+                to_invalidate = pages.filtered(
+                    lambda p: p.cache_time and not p._can_be_cached(vals['arch'])
+                )
+                to_invalidate and _logger.info('Disable cache for page %s', to_invalidate)
+                to_invalidate.cache_time = 0
 
             # No need of COW if the view is already specific
             if view.website_id:
@@ -114,7 +126,6 @@ class View(models.Model):
             # but in reality the values were only meant to go on the specific
             # page. Invalidate all fields and not only those in vals because
             # other fields could have been changed implicitly too.
-            pages = view.page_ids
             pages.flush(records=pages)
             pages.invalidate_cache(ids=pages.ids)
 
@@ -411,9 +422,9 @@ class View(models.Model):
             # in edit mode ir.ui.view will tag nodes
             if not translatable and not self.env.context.get('rendering_bundle'):
                 if editable:
-                    new_context = dict(self._context, inherit_branding=True)
+                    new_context.setdefault("inherit_branding", True)
                 elif request.env.user.has_group('website.group_website_publisher'):
-                    new_context = dict(self._context, inherit_branding_auto=True)
+                    new_context.setdefault("inherit_branding_auto", True)
             if values and 'main_object' in values:
                 if request.env.user.has_group('website.group_website_publisher'):
                     func = getattr(values['main_object'], 'get_backend_menu_id', False)
@@ -455,7 +466,7 @@ class View(models.Model):
                 main_object=self,
                 website=request.website,
                 is_view_active=request.website.is_view_active,
-                res_company=request.website.company_id.sudo(),
+                res_company=request.env['res.company'].browse(request.website._get_cached('company_id')).sudo(),
                 translatable=translatable,
                 editable=editable,
             ))
@@ -511,8 +522,33 @@ class View(models.Model):
                 ('website_id', '=', current_website.id)
             ], limit=1)
             if website_specific_view:
-                self = website_specific_view
+                if (
+                    website_specific_view.first_page_id
+                    and website_specific_view.first_page_id.url != self.first_page_id.url
+                ):
+                    # The case here is when a generic page is edited after its
+                    # specific page has a different URL. In this case, the
+                    # generic page can still be accessed since the specific one
+                    # does not shadow it anymore. In such a case, we need the
+                    # write to be done on the edited generic page and not target
+                    # the specific one.
+                    self = self.with_context(no_cow=True)
+                else:
+                    self = website_specific_view
         super(View, self).save(value, xpath=xpath)
+
+    @api.model
+    def _get_allowed_root_attrs(self):
+        # Related to these options:
+        # background-video, background-shapes, parallax
+        return super()._get_allowed_root_attrs() + [
+            'data-bg-video-src', 'data-shape', 'data-scroll-background-ratio',
+        ]
+
+    def _get_combined_arch(self):
+        root = super()._get_combined_arch()
+        add_form_signature(root, self.sudo().env)
+        return root
 
     # --------------------------------------------------------------------------
     # Snippet saving

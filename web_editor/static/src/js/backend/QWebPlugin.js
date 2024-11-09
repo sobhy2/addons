@@ -1,20 +1,19 @@
 /** @odoo-module **/
 
-/**
- * Returns a list of all the ancestors nodes of the provided node.
- *
- * @param {Node} node
- * @param {Node} [stopElement] include to prevent bubbling up further than the stopElement.
- * @returns {HTMLElement[]}
- */
-function ancestors(node, stopElement) {
-    if (!node || !node.parentElement || node === stopElement) return [];
-    return [node.parentElement, ...ancestors(node.parentElement, stopElement)];
-}
+import { ancestors } from '@web_editor/js/common/wysiwyg_utils';
 
 export class QWebPlugin {
     constructor(options = {}) {
         this._options = options;
+        if (this._options.editor) {
+            this._editable = this._options.editor.editable;
+            this._document = this._options.editor.document;
+        } else {
+            this._editable = this._options.editable;
+            this._document = this._options.document || window.document;
+        }
+        this._editable = this._options.editable || (this._options.editor && this._options.editor.editable);
+        this._document = this._options.document || (this._options.editor && this._options.editor.document) || window.document;
         this._tGroupCount = 0;
         this._hideBranchingSelection = this._hideBranchingSelection.bind(this);
         this._makeBranchingSelection();
@@ -27,7 +26,8 @@ export class QWebPlugin {
         }
     }
     cleanForSave(editable) {
-        for (const node of editable.querySelectorAll('[data-oe-t-group]')) {
+        for (const node of editable.querySelectorAll('[data-oe-t-group], [data-oe-t-inline], [data-oe-t-selectable], [data-oe-t-group-active]')) {
+            node.removeAttribute('data-oe-t-group-active');
             node.removeAttribute('data-oe-t-group');
             node.removeAttribute('data-oe-t-inline');
             node.removeAttribute('data-oe-t-selectable');
@@ -37,8 +37,8 @@ export class QWebPlugin {
         if (subRoot.nodeType !== Node.ELEMENT_NODE) {
             return;
         }
-        if (this._editor) {
-            this._editor.observerUnactive('qweb-plugin-sanitize');
+        if (this._options.editor) {
+            this._options.editor.observerUnactive('qweb-plugin-sanitize');
         }
 
         this._fixInlines(subRoot);
@@ -49,8 +49,8 @@ export class QWebPlugin {
         }
 
         this._groupQwebBranching(subRoot);
-        if (this._editor) {
-            this._editor.observerActive('qweb-plugin-sanitize');
+        if (this._options.editor) {
+            this._options.editor.observerActive('qweb-plugin-sanitize');
         }
     }
     _groupQwebBranching(subRoot) {
@@ -117,16 +117,16 @@ export class QWebPlugin {
         // todo: remove the setTimeout when the editor will provide a signal
         // that the editable is on the dom.
         setTimeout(() => {
-            if (this._editor) {
-                this._editor.observerUnactive('qweb-plugin-checkAllInline');
+            if (this._options.editor) {
+                this._options.editor.observerUnactive('qweb-plugin-checkAllInline');
             }
             for (const tElement of tElements) {
                 if (checkAllInline(tElement)) {
                     tElement.setAttribute('data-oe-t-inline', 'true');
                 }
             }
-            if (this._editor) {
-                this._editor.observerActive('qweb-plugin-checkAllInline');
+            if (this._options.editor) {
+                this._options.editor.observerActive('qweb-plugin-checkAllInline');
             }
         });
     }
@@ -141,7 +141,7 @@ export class QWebPlugin {
     _showBranchingSelection(target) {
         this._hideBranchingSelection();
 
-        const branchingHierarchyElements = [target, ...ancestors(target, this._options.editable)]
+        const branchingHierarchyElements = [target, ...ancestors(target, this._editable)]
             .filter(element => element.getAttribute('data-oe-t-group-active') === 'true')
             .filter(element => {
                 const itemGroupId = element.getAttribute('data-oe-t-group');

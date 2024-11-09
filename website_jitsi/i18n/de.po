@@ -3,8 +3,9 @@
 # 	* website_jitsi
 # 
 # Translators:
-# Martin Trigaux, 2021
 # philku79 <philip.kuss@gmx.de>, 2021
+# Friederike Fasterling-Nesselbosch, 2021
+# Martin Trigaux, 2023
 # 
 msgid ""
 msgstr ""
@@ -12,8 +13,8 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-07-12 07:50+0000\n"
 "PO-Revision-Date: 2021-09-14 12:28+0000\n"
-"Last-Translator: philku79 <philip.kuss@gmx.de>, 2021\n"
-"Language-Team: German (https://www.transifex.com/odoo/teams/41243/de/)\n"
+"Last-Translator: Martin Trigaux, 2023\n"
+"Language-Team: German (https://app.transifex.com/odoo/teams/41243/de/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
@@ -33,7 +34,7 @@ msgstr "16"
 #. module: website_jitsi
 #: model:ir.model.fields.selection,name:website_jitsi.selection__chat_room__max_capacity__20
 msgid "20"
-msgstr ""
+msgstr "20"
 
 #. module: website_jitsi
 #: model:ir.model,name:website_jitsi.model_chat_room
@@ -42,18 +43,18 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:website_jitsi.chat_room_view_search
 #: model_terms:ir.ui.view,arch_db:website_jitsi.chat_room_view_tree
 msgid "Chat Room"
-msgstr "Chat Raum"
+msgstr "Chatraum"
 
 #. module: website_jitsi
 #: model:ir.model,name:website_jitsi.model_chat_room_mixin
 msgid "Chat Room Mixin"
-msgstr ""
+msgstr "Chatraum-Mixin"
 
 #. module: website_jitsi
 #: model:ir.actions.act_window,name:website_jitsi.chat_room_action
 #: model:ir.ui.menu,name:website_jitsi.chat_room_menu
 msgid "Chat Rooms"
-msgstr ""
+msgstr "Chaträume"
 
 #. module: website_jitsi
 #. openerp-web
@@ -96,12 +97,12 @@ msgstr "ID"
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room__jitsi_server_domain
 #: model:ir.model.fields,field_description:website_jitsi.field_res_config_settings__jitsi_server_domain
 msgid "Jitsi Server Domain"
-msgstr ""
+msgstr "Jitsi-Serverdomain"
 
 #. module: website_jitsi
 #: model_terms:ir.ui.view,arch_db:website_jitsi.chat_room_join_button
 msgid "Join the room"
-msgstr ""
+msgstr "Dem Raum beitreten"
 
 #. module: website_jitsi
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room__lang_id
@@ -112,7 +113,7 @@ msgstr "Sprache"
 #. module: website_jitsi
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room__last_activity
 msgid "Last Activity"
-msgstr "Letzte Aktivität am"
+msgstr "Letzte Aktivität"
 
 #. module: website_jitsi
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room____last_update
@@ -122,7 +123,7 @@ msgstr "Zuletzt geändert am"
 #. module: website_jitsi
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room__write_uid
 msgid "Last Updated by"
-msgstr "Zuletzt aktualisiert durch"
+msgstr "Zuletzt aktualisiert von"
 
 #. module: website_jitsi
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room__write_date
@@ -139,7 +140,7 @@ msgstr "Letzte Aktivität"
 #: code:addons/website_jitsi/static/src/xml/chat_room_modal.xml:0
 #, python-format
 msgid "Loading your room..."
-msgstr ""
+msgstr "Ihr Raum wird geladen ..."
 
 #. module: website_jitsi
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room__max_capacity
@@ -150,29 +151,30 @@ msgstr "Maximale Kapazität"
 #. module: website_jitsi
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room__max_participant_reached
 msgid "Max participant reached"
-msgstr ""
+msgstr "Maximale Teilnehmerzahl erreicht"
 
 #. module: website_jitsi
 #: model:ir.model.fields,help:website_jitsi.field_chat_room__max_participant_reached
 #: model:ir.model.fields,help:website_jitsi.field_chat_room_mixin__room_max_participant_reached
 msgid "Maximum number of participant reached in the room at the same time"
 msgstr ""
+"Maximale Anzahl von Teilnehmern, die sich gleichzeitig im Raum befinden"
 
 #. module: website_jitsi
 #: model:ir.model.fields.selection,name:website_jitsi.selection__chat_room__max_capacity__no_limit
 msgid "No limit"
-msgstr ""
+msgstr "Kein Limit"
 
 #. module: website_jitsi
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room__participant_count
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room_mixin__room_participant_count
 msgid "Participant count"
-msgstr "Teilnehmer Anzahl"
+msgstr "Anzahl Teilnehmer"
 
 #. module: website_jitsi
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room_mixin__room_max_participant_reached
 msgid "Peak participants"
-msgstr ""
+msgstr "Maximale Teilnehmerzahl."
 
 #. module: website_jitsi
 #: model_terms:ir.ui.view,arch_db:website_jitsi.chat_room_view_form
@@ -188,7 +190,7 @@ msgstr "Raum ist voll"
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room__name
 #: model:ir.model.fields,field_description:website_jitsi.field_chat_room_mixin__room_name
 msgid "Room Name"
-msgstr "Raum Name"
+msgstr "Raumname"
 
 #. module: website_jitsi
 #: model:ir.model.fields,help:website_jitsi.field_chat_room__jitsi_server_domain
@@ -197,8 +199,10 @@ msgid ""
 "The Jitsi server domain can be customized through the settings to use a "
 "different server than the default \"meet.jit.si\""
 msgstr ""
+"Die Jitsi-Server-Domain kann über die Einstellungen angepasst werden, um "
+"einen anderen Server als den Standard „meet.jit.si“ zu verwenden."
 
 #. module: website_jitsi
 #: model_terms:ir.ui.view,arch_db:website_jitsi.res_config_settings_view_form
 msgid "meet.jit.si"
-msgstr ""
+msgstr "meet.jit.si"

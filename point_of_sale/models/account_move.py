@@ -27,7 +27,9 @@ class AccountMove(models.Model):
         if self.state == 'draft':
             return lot_values
 
-        for order in self.pos_order_ids:
+        # user may not have access to POS orders, but it's ok if they have
+        # access to the invoice
+        for order in self.sudo().pos_order_ids:
             for line in order.lines:
                 lots = line.pack_lot_ids or False
                 if lots:
@@ -37,6 +39,7 @@ class AccountMove(models.Model):
                             'quantity': line.qty if lot.product_id.tracking == 'lot' else 1.0,
                             'uom_name': line.product_uom_id.name,
                             'lot_name': lot.lot_name,
+                            'pos_lot_id': lot.id,
                         })
 
         return lot_values
@@ -44,8 +47,8 @@ class AccountMove(models.Model):
     def _get_reconciled_vals(self, partial, amount, counterpart_line):
         """Add pos_payment_name field in the reconciled vals to be able to show the payment method in the invoice."""
         result = super()._get_reconciled_vals(partial, amount, counterpart_line)
-        if counterpart_line.move_id.pos_payment_ids:
-            pos_payment = counterpart_line.move_id.pos_payment_ids
+        if counterpart_line.move_id.sudo().pos_payment_ids:
+            pos_payment = counterpart_line.move_id.sudo().pos_payment_ids
             result['pos_payment_name'] = pos_payment.payment_method_id.name
         return result
 

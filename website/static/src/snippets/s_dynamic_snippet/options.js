@@ -18,13 +18,24 @@ const dynamicSnippetOptions = options.Class.extend({
         // name of the model of the currently selected filter, used to fetch templates
         this.currentModelName = undefined;
         this.dynamicFilterTemplates = {};
+        // Indicates that some current options are a default selection.
+        this.isOptionDefault = {};
     },
     /**
      *
      * @override
      */
     onBuilt: function () {
+        // TODO Remove in master.
+        this.$target[0].dataset['snippet'] = 's_dynamic_snippet';
         this._setOptionsDefaultValues();
+        // TODO Remove in master: adapt dropped snippet template.
+        const classList = [...this.$target[0].classList];
+        if (classList.includes('d-none') && !classList.some(className => className.match(/^d-(md|lg)-/))) {
+            // Remove the 'd-none' of the old template if it is not related to
+            // the visible on mobile option.
+            this.$target[0].classList.remove('d-none');
+        }
     },
 
     //--------------------------------------------------------------------------
@@ -47,18 +58,38 @@ const dynamicSnippetOptions = options.Class.extend({
         }
         if (params.attributeName === 'numberOfRecords' && previewMode === false) {
             const dataSet = this.$target.get(0).dataset;
-            if (dataSet.numberOfElements > dataSet.numberOfRecords) {
-                dataSet.numberOfElements = dataSet.numberOfRecords;
+            const numberOfElements = parseInt(dataSet.numberOfElements);
+            const numberOfRecords = parseInt(dataSet.numberOfRecords);
+            const numberOfElementsSmallDevices = parseInt(dataSet.numberOfElementsSmallDevices);
+            if (numberOfElements > numberOfRecords) {
+                dataSet.numberOfElements = numberOfRecords;
             }
-            if (dataSet.numberOfElementsSmallDevices > dataSet.numberOfRecords) {
-                dataSet.numberOfElementsSmallDevices = dataSet.numberOfRecords;
+            if (numberOfElementsSmallDevices > numberOfRecords) {
+                dataSet.numberOfElementsSmallDevices = numberOfRecords;
             }
+
+            // TODO adapt in master
+            dataSet.forceMinimumMaxLimitTo16 = '1';
         }
     },
 
     //--------------------------------------------------------------------------
     // Public
     //--------------------------------------------------------------------------
+
+    /**
+     * See from updateUI in s_website_form
+     * 
+     * @override
+     */
+    async updateUI() {
+        if (this.rerender) {
+            this.rerender = false;
+            await this._rerenderXML();
+            return;
+        }
+        await this._super(...arguments);
+    },
 
     /**
      * @override
@@ -170,6 +201,7 @@ const dynamicSnippetOptions = options.Class.extend({
                 const selectedFilterId = this.$target.get(0).dataset['filterId'];
                 if (!this.dynamicFilters[selectedFilterId]) {
                     this.$target.get(0).dataset['filterId'] = dynamicFilters[0].id;
+                    this.isOptionDefault['filterId'] = true;
                 }
             }
         }
@@ -206,13 +238,12 @@ const dynamicSnippetOptions = options.Class.extend({
             const selectedTemplateId = this.$target.get(0).dataset['templateKey'];
             if (!this.dynamicFilterTemplates[selectedTemplateId]) {
                 this.$target.get(0).dataset['templateKey'] = dynamicFilterTemplates[0].key;
-                setTimeout(() => {
-                    this._templateUpdated(dynamicFilterTemplates[0].key, selectedTemplateId);
-                    this._refreshPublicWidgets();
-                });
+                this.isOptionDefault['templateKey'] = true;
+                this._templateUpdated(dynamicFilterTemplates[0].key, selectedTemplateId);
+                await this._refreshPublicWidgets();
             }
         } else {
-            this._refreshPublicWidgets();
+            await this._refreshPublicWidgets();
         }
         const templatesSelectorEl = uiFragment.querySelector('[data-name="template_opt"]');
         return this._renderSelectUserValueWidgetButtons(templatesSelectorEl, this.dynamicFilterTemplates);
@@ -248,7 +279,7 @@ const dynamicSnippetOptions = options.Class.extend({
     _filterUpdated: function (filter) {
         if (filter && this.currentModelName !== filter.model_name) {
             this.currentModelName = filter.model_name;
-            this._rerenderXML();
+            this.rerender = true;
         }
     },
     /**
@@ -281,8 +312,13 @@ const dynamicSnippetOptions = options.Class.extend({
      * @private
      */
     _setOptionValue: function (optionName, value) {
-        if (this.$target.get(0).dataset[optionName] === undefined) {
+        const selectedTemplateId = this.$target.get(0).dataset['templateKey'];
+        if (this.$target.get(0).dataset[optionName] === undefined || this.isOptionDefault[optionName]) {
             this.$target.get(0).dataset[optionName] = value;
+            this.isOptionDefault[optionName] = false;
+        }
+        if (optionName === 'templateKey') {
+            this._templateUpdated(value, selectedTemplateId);
         }
     },
 });

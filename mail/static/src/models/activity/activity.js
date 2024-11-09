@@ -124,6 +124,8 @@ function factory(dependencies) {
         /**
          * Opens (legacy) form view dialog to edit current activity and updates
          * the activity when dialog is closed.
+         *
+         * @return {Promise} promise that is fulfilled when the form has been closed
          */
         edit() {
             const action = {
@@ -139,18 +141,32 @@ function factory(dependencies) {
                 },
                 res_id: this.id,
             };
-            this.env.bus.trigger('do-action', {
-                action,
-                options: { on_close: () => this.fetchAndUpdate() },
+            return new Promise(resolve => {
+                this.env.bus.trigger('do-action', {
+                    action,
+                    options: {
+                        on_close: () => {
+                            resolve();
+                            this.fetchAndUpdate();
+                        },
+                    },
+                });
             });
         }
 
         async fetchAndUpdate() {
-            const [data] = await this.async(() => this.env.services.rpc({
+            const [data] = await this.env.services.rpc({
                 model: 'mail.activity',
                 method: 'activity_format',
                 args: [this.id],
-            }, { shadow: true }));
+            }, { shadow: true }).catch(e => {
+                const errorName = e.message && e.message.data && e.message.data.name;
+                if (errorName === 'odoo.exceptions.MissingError') {
+                    return [];
+                } else {
+                    throw e;
+                }
+            });
             let shouldDelete = false;
             if (data) {
                 this.update(this.constructor.convertData(data));

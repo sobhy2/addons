@@ -197,7 +197,7 @@ class MailActivityMixin(models.AbstractModel):
     @api.depends('activity_ids.date_deadline')
     def _compute_activity_date_deadline(self):
         for record in self:
-            record.activity_date_deadline = record.activity_ids[:1].date_deadline
+            record.activity_date_deadline = fields.first(record.activity_ids).date_deadline
 
     def _search_activity_date_deadline(self, operator, operand):
         if operator == '=' and not operand:
@@ -308,7 +308,9 @@ class MailActivityMixin(models.AbstractModel):
             where_clause=where_clause or '1=1',
             group_by=', '.join(groupby_terms),
         )
-        self.env.cr.execute(select_query, [tz] * 3 + where_params)
+        num_from_params = from_clause.count('%s')
+        where_params[num_from_params:num_from_params] = [tz] * 3 # timezone after from parameters
+        self.env.cr.execute(select_query, where_params)
         fetched_data = self.env.cr.dictfetchall()
         self._read_group_resolve_many2x_fields(fetched_data, annotated_groupbys)
         data = [
@@ -357,12 +359,12 @@ class MailActivityMixin(models.AbstractModel):
         :param additional_domain: if set, filter on that domain;
         """
         if self.env.context.get('mail_activity_automation_skip'):
-            return False
+            return self.env['mail.activity']
 
         Data = self.env['ir.model.data'].sudo()
         activity_types_ids = [type_id for type_id in (Data._xmlid_to_res_id(xmlid, raise_if_not_found=False) for xmlid in act_type_xmlids) if type_id]
         if not any(activity_types_ids):
-            return False
+            return self.env['mail.activity']
 
         domain = [
             '&', '&', '&',
@@ -413,9 +415,10 @@ class MailActivityMixin(models.AbstractModel):
                 'date_deadline': date_deadline,
                 'res_model_id': model_id,
                 'res_id': record.id,
-                'user_id': act_values.get('user_id') or activity_type.default_user_id.id or self.env.uid
             }
             create_vals.update(act_values)
+            if not create_vals.get('user_id'):
+                create_vals['user_id'] = activity_type.default_user_id.id or self.env.uid
             activities |= self.env['mail.activity'].create(create_vals)
         return activities
 

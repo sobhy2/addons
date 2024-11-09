@@ -62,7 +62,7 @@ class Event(models.Model):
         readonly=False, store=True)
     location_menu_ids = fields.One2many(
         "website.event.menu", "event_id", string="Location Menus",
-        domain=[("menu_type", "=", "location_menu")])
+        domain=[("menu_type", "=", "location")])
     register_menu = fields.Boolean(
         "Register Menu", compute="_compute_website_menu_data",
         readonly=False, store=True)
@@ -301,7 +301,9 @@ class Event(models.Model):
         :param menus_update_by_field: see ``_get_menus_update_by_field``"""
         for event in self:
             if event.menu_id and not event.website_menu:
-                event.menu_id.sudo().unlink()
+                # do not rely on cascade, as it is done in SQL -> not calling override and
+                # letting some ir.ui.views in DB
+                (event.menu_id + event.menu_id.child_id).sudo().unlink()
             elif event.website_menu and not event.menu_id:
                 root_menu = self.env['website.menu'].sudo().create({'name': event.name, 'website_id': event.website_id.id})
                 event.menu_id = root_menu
@@ -398,10 +400,10 @@ class Event(models.Model):
 
     def _track_subtype(self, init_values):
         self.ensure_one()
-        if 'is_published' in init_values and self.is_published:
-            return self.env.ref('website_event.mt_event_published')
-        elif 'is_published' in init_values and not self.is_published:
-            return self.env.ref('website_event.mt_event_unpublished')
+        if init_values.keys() & {'is_published', 'website_published'}:
+            if self.is_published:
+                return self.env.ref('website_event.mt_event_published', raise_if_not_found=False)
+            return self.env.ref('website_event.mt_event_unpublished', raise_if_not_found=False)
         return super(Event, self)._track_subtype(init_values)
 
     def _get_event_resource_urls(self):
@@ -519,7 +521,7 @@ class Event(models.Model):
         fetch_fields = ['name', 'website_url']
         mapping = {
             'name': {'name': 'name', 'type': 'text', 'match': True},
-            'website_url': {'name': 'website_url', 'type': 'text'},
+            'website_url': {'name': 'website_url', 'type': 'text', 'truncate': False},
         }
         if with_description:
             search_fields.append('subtitle')

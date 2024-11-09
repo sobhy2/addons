@@ -43,7 +43,7 @@
                                 <field name="sequence_id" groups="base.group_no_one"/>
                                 <field name="sequence_code"/>
                                 <field name="warehouse_id" groups="stock.group_stock_multi_warehouses" force_save="1"/>
-                                <field name="print_label" attrs="{'invisible': [('code', '!=', 'internal')]}"/>
+                                <field name="print_label" attrs="{'invisible': [('code', 'not in', ['internal', 'outgoing'])]}"/>
                                 <field name="reservation_method" attrs="{'invisible': [('code', '=', 'incoming')]}" widget="radio"/>
                                 <label for="reservation_days_before" string="Reserve before scheduled date" attrs="{'invisible': ['|', ('code', '=', 'incoming'), ('reservation_method', '!=', 'by_date')]}"/>
                                 <div class="o_row" attrs="{'invisible': ['|', ('code', '=', 'incoming'), ('reservation_method', '!=', 'by_date')]}">
@@ -125,7 +125,7 @@
             <field name="model">stock.picking</field>
             <field name="priority" eval="2"/>
             <field name="arch" type="xml">
-                <calendar string="Calendar View" date_start="scheduled_date" color="partner_id" event_limit="5">
+                <calendar string="Calendar View" date_start="scheduled_date" color="partner_id" event_limit="5" quick_add="False">
                     <field name="partner_id" filters="1"/>
                     <field name="origin"/>
                     <field name="picking_type_id"/>
@@ -197,9 +197,9 @@
                     <field name="products_availability" options='{"lazy": true}'
                         optional="hide"
                         attrs="{'invisible': ['|', ('picking_type_code', '!=', 'outgoing'), ('state', 'not in', ['confirmed', 'waiting', 'assigned'])]}"
-                        decoration-warning="products_availability_state == 'expected'"
-                        decoration-danger="products_availability_state == 'late'"
-                        decoration-success="products_availability_state == 'available'"/>
+                        decoration-success="state == 'assigned' or products_availability_state == 'available'"
+                        decoration-warning="state != 'assigned' and products_availability_state in ('expected', 'available')"
+                        decoration-danger="state != 'assigned' and products_availability_state == 'late'"/>
                     <field name="date_deadline" optional="hide" widget="remaining_days" attrs="{'invisible':[('state', 'in', ('done', 'cancel'))]}"/>
                     <field name="date_done" string="Effective Date" optional="hide"/>
                     <field name="origin" optional="show"/>
@@ -229,6 +229,7 @@
                 <field name="picking_type_code" invisible="1"/>
                 <field name="hide_picking_type" invisible="1"/>
                 <field name="show_operations" invisible="1" readonly="1"/>
+                <field name="show_allocation" invisible="1"/>
                 <field name="show_reserved" invisible="1" readonly="1"/>
                 <field name="move_line_exist" invisible="1"/>
                 <field name="has_packages" invisible="1"/>
@@ -272,7 +273,7 @@
                         <button name="action_view_reception_report" string="Allocation" type="object"
                             context="{'default_picking_ids': [id]}"
                             class="oe_stat_button" icon="fa-list"
-                            attrs="{'invisible': ['|', ('picking_type_code', '=', 'outgoing'), ('picking_type_code', '=', False)]}"
+                            attrs="{'invisible': [('show_allocation', '=', False)]}"
                             groups="stock.group_reception_report"/>
                         <!-- Use the following button to avoid onchange on one2many -->
                         <button name="action_picking_move_tree"
@@ -326,9 +327,9 @@
                             <field name="products_availability_state" invisible="1"/>
                             <field name="products_availability"
                                 attrs="{'invisible': ['|', ('picking_type_code', '!=', 'outgoing'), ('state', 'not in', ['confirmed', 'waiting', 'assigned'])]}"
-                                decoration-warning="products_availability_state == 'expected'"
-                                decoration-danger="products_availability_state == 'late'"
-                                decoration-success="products_availability_state == 'available'"/>
+                                decoration-success="state == 'assigned' or products_availability_state == 'available'"
+                                decoration-warning="state != 'assigned' and products_availability_state in ('expected', 'available')"
+                                decoration-danger="state != 'assigned' and products_availability_state == 'late'"/>
                             <field name="date_done" string="Effective Date" attrs="{'invisible': [('state', '!=', 'done')]}"/>
                             <field name="origin" placeholder="e.g. PO0032"/>
                             <field name="owner_id" groups="stock.group_tracking_owner"
@@ -348,13 +349,13 @@
                             <field name="package_level_ids_details"
                                    context="{'default_location_id': location_id, 'default_location_dest_id': location_dest_id, 'default_company_id': company_id}"
                                    attrs="{'readonly': [('state', '=', 'done')], 'invisible': ['|', ('picking_type_entire_packs', '=', False), ('show_operations', '=', False)]}" />
-                            <button class="oe_highlight" name="action_put_in_pack" type="object" string="Put in Pack" attrs="{'invisible': [('state', 'in', ('draft', 'done', 'cancel'))]}" groups="stock.group_tracking_lot"/>
+                            <button class="oe_highlight" name="action_put_in_pack" type="object" string="Put in Pack" attrs="{'invisible': [('state', 'in', ('draft', 'done', 'cancel'))]}" groups="stock.group_tracking_lot" data-hotkey="shift+g"/>
                         </page>
 
                         <page string="Operations" name="operations">
                             <field name="move_ids_without_package" mode="tree,kanban"
                                 attrs="{'readonly': ['&amp;', ('state', '=', 'done'), ('is_locked', '=', True)]}"
-                                context="{'default_company_id': company_id, 'default_date': scheduled_date, 'default_date_deadline': date_deadline, 'picking_type_code': picking_type_code, 'default_picking_id': id, 'form_view_ref':'stock.view_move_form', 'address_in_id': partner_id, 'default_picking_type_id': picking_type_id, 'default_location_id': location_id, 'default_location_dest_id': location_dest_id}"
+                                context="{'default_company_id': company_id, 'default_date': scheduled_date, 'default_date_deadline': date_deadline, 'picking_type_code': picking_type_code, 'default_picking_id': id, 'form_view_ref':'stock.view_move_form', 'address_in_id': partner_id, 'default_picking_type_id': picking_type_id, 'default_location_id': location_id, 'default_location_dest_id': location_dest_id, 'default_partner_id': partner_id}"
                                 add-label="Add a Product">
                                 <tree decoration-danger="not parent.immediate_transfer and state != 'done' and quantity_done > reserved_availability and show_reserved_availability" decoration-muted="scrapped == True or state == 'cancel' or (state == 'done' and is_locked == True)" string="Stock Moves" editable="bottom">
                                     <field name="company_id" invisible="1"/>
@@ -363,6 +364,7 @@
                                     <field name="picking_type_id" invisible="1"/>
                                     <field name="location_id" invisible="1"/>
                                     <field name="location_dest_id" invisible="1"/>
+                                    <field name="partner_id" invisible="1"/>
                                     <field name="scrapped" invisible="1"/>
                                     <field name="picking_code" invisible="1"/>
                                     <field name="product_type" invisible="1"/>
@@ -377,16 +379,16 @@
                                     <field name="display_assign_serial" invisible="1"/>
                                     <field name="product_id" required="1" context="{'default_detailed_type': 'product'}" attrs="{'readonly': ['|', '&amp;', ('state', '!=', 'draft'), ('additional', '=', False), ('move_lines_count', '&gt;', 0)]}"/>
                                     <field name="description_picking" string="Description" optional="hide"/>
-                                    <field name="date" invisible="1"/>
+                                    <field name="date" optional="hide"/>
                                     <field name="date_deadline" optional="hide"/>
                                     <field name="is_initial_demand_editable" invisible="1"/>
                                     <field name="is_quantity_done_editable" invisible="1"/>
                                     <field name="product_packaging_id" groups="product.group_stock_packaging"/>
                                     <field name="product_uom_qty" string="Demand" attrs="{'column_invisible': [('parent.immediate_transfer', '=', True)], 'readonly': ['|', ('is_initial_demand_editable', '=', False), '&amp;', '&amp;', ('show_operations', '=', True), ('is_locked', '=', True), ('is_initial_demand_editable', '=', False)]}"/>
                                     <button type="object" name="action_product_forecast_report" icon="fa-area-chart" 
-                                        attrs="{'invisible': ['|', ('forecast_availability', '&lt;', 0), '|', ('parent.immediate_transfer', '=', True), '&amp;', ('parent.picking_type_code', '=', 'outgoing'), ('state', '!=', 'draft')]}"/>
+                                        attrs="{'invisible': ['|', '&amp;', ('reserved_availability', '=', 0), ('forecast_availability', '&lt;=', 0), '|', ('parent.immediate_transfer', '=', True), '&amp;', ('parent.picking_type_code', '=', 'outgoing'), ('state', '!=', 'draft')]}"/>
                                     <button type="object" name="action_product_forecast_report" icon="fa-area-chart text-danger" 
-                                        attrs="{'invisible': ['|', ('forecast_availability', '&gt;=', 0), '|', ('parent.immediate_transfer', '=', True), '&amp;', ('parent.picking_type_code', '=', 'outgoing'), ('state', '!=', 'draft')]}"/>
+                                        attrs="{'invisible': ['|', '|', ('reserved_availability', '!=', 0), ('forecast_availability', '&gt;', 0), '|', ('parent.immediate_transfer', '=', True), '&amp;', ('parent.picking_type_code', '=', 'outgoing'), ('state', '!=', 'draft')]}"/>
                                     <field name="forecast_expected_date" invisible="1"/>
                                     <field name="forecast_availability" string="Reserved"
                                         attrs="{'column_invisible': ['|', '|', ('parent.state', 'in', ['draft', 'done']), ('parent.picking_type_code', '!=', 'outgoing'), ('parent.immediate_transfer', '=', True)]}" widget="forecast_widget"/>
@@ -436,7 +438,7 @@
                             </field>
                             <field name="id" invisible="1"/>
                             <field name="package_level_ids" context="{'default_location_id': location_id, 'default_location_dest_id': location_dest_id, 'default_company_id': company_id}" attrs="{'readonly': [('state', '=', 'done')], 'invisible': ['|', ('picking_type_entire_packs', '=', False), ('show_operations', '=', True)]}" />
-                            <button class="oe_highlight" name="action_put_in_pack" type="object" string="Put in Pack" attrs="{'invisible': [('state', 'in', ('draft', 'done', 'cancel'))]}" groups="stock.group_tracking_lot"/>
+                            <button class="oe_highlight" name="action_put_in_pack" type="object" string="Put in Pack" attrs="{'invisible': [('state', 'in', ('draft', 'done', 'cancel'))]}" groups="stock.group_tracking_lot" data-hotkey="shift+g"/>
                         </page>
                         <page string="Additional Info" name="extra">
                             <group>

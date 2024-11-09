@@ -75,6 +75,10 @@
     grid-area: core-header;
 }
 
+.o_Composer_cancelReply {
+    cursor: pointer;
+}
+
 .o_Composer_coreMain {
     grid-area: core-main;
     min-width: 0;
@@ -91,6 +95,10 @@
 .o_Composer_currentPartnerAvatar {
     width: 36px;
     height: 36px;
+}
+
+.o_Composer_EmojiIcon {
+    overflow: visible !important;
 }
 
 .o_Composer_followers,

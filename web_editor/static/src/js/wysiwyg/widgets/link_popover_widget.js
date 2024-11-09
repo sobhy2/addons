@@ -3,6 +3,7 @@
 import Widget from 'web.Widget';
 import {_t} from 'web.core';
 import {DropPrevious} from 'web.concurrency';
+import { ancestors } from '@web_editor/js/common/wysiwyg_utils';
 
 const LinkPopoverWidget = Widget.extend({
     template: 'wysiwyg.widgets.link.edit.tooltip',
@@ -15,13 +16,30 @@ const LinkPopoverWidget = Widget.extend({
     /**
      * @constructor
      * @param {Element} target: target Element for which we display a popover
+     * @param {Wysiwyg} [option.wysiwyg]: The wysiwyg editor
      */
-    init(parent, target) {
+    init(parent, target, options) {
         this._super(...arguments);
+        this.options = options;
         this.target = target;
         this.$target = $(target);
         this.href = this.$target.attr('href'); // for template
         this._dp = new DropPrevious();
+    },
+    /**
+     * @override
+     * @todo replace this hack in master. This is required to not listen to the
+     * DOM mutation of adding this widget inside the DOM (which is probably not
+     * even needed in the first place).
+     */
+    _widgetRenderAndInsert(insertCallback, ...rest) {
+        const patchedInsertCallback = (...args) => {
+            this.options.wysiwyg.odooEditor.observerUnactive();
+            const res = insertCallback(...args);
+            this.options.wysiwyg.odooEditor.observerActive();
+            return res;
+        };
+        return this._super(patchedInsertCallback, ...rest);
     },
     /**
      *
@@ -34,6 +52,14 @@ const LinkPopoverWidget = Widget.extend({
         this.$copyLink = this.$('.o_we_copy_link');
         this.$fullUrl = this.$('.o_we_full_url');
 
+        // Use the right ClipboardJS with respect to the prototype of this.el
+        // since, starting with Firefox 109, a widget element prototype that is
+        // adopted by an iframe will not be instanceof its original constructor.
+        // See: https://github.com/webcompat/web-bugs/issues/118350
+        const ClipboardJS =
+            this.el instanceof HTMLElement
+                ? window.ClipboardJS
+                : this.el.ownerDocument.defaultView.ClipboardJS;
         // Copy onclick handler
         const clipboard = new ClipboardJS(
             this.$copyLink[0],
@@ -45,10 +71,13 @@ const LinkPopoverWidget = Widget.extend({
                 type: 'success',
                 message: _t("Link copied to clipboard."),
             });
+            this.popover.hide();
         });
 
-        // init tooltips & popovers
-        this.$('[data-toggle="tooltip"]').tooltip({delay: 0, placement: 'bottom'});
+        // Init popover -> it is moved out of the link (and the savable area)
+        const tooltips = [];
+        let popoverShown = true;
+        this.options.wysiwyg.odooEditor.observerUnactive();
         this.$target.popover({
             html: true,
             content: this.$el,
@@ -59,14 +88,70 @@ const LinkPopoverWidget = Widget.extend({
             // 3. Remain open when the popover content is clicked..
             // 4. ..except if it the click was on a button of the popover content
             // 5. Close when the user click somewhere on the page (not being the link or the popover content)
-            trigger: 'focus',
+            trigger: 'manual',
             boundary: 'viewport',
+            container: this.options.wysiwyg.odooEditor.document.body,
         })
         .on('show.bs.popover.link_popover', () => {
             this._loadAsyncLinkPreview();
+            popoverShown = true;
         })
-        .popover('show')
-        .data('bs.popover').tip.classList.add('o_edit_menu_popover');
+        .on('hide.bs.popover.link_popover', () => {
+            popoverShown = false;
+        })
+        .on('hidden.bs.popover.link_popover', () => {
+            for (const tooltip of tooltips) {
+                tooltip.hide();
+            }
+        })
+        .on('inserted.bs.popover.link_popover', () => {
+            this.$target.data('bs.popover').tip.classList.add('o_edit_menu_popover');
+        }).popover('show');
+        this.options.wysiwyg.odooEditor.observerActive();
+
+        // Init popover inner tooltips (no need of observer unactive since out
+        // of the editable area).
+        this.$('[data-toggle="tooltip"]').tooltip({
+            delay: 0,
+            placement: 'bottom',
+            container: this.options.wysiwyg.odooEditor.document.body,
+        });
+        for (const el of this.$('[data-toggle="tooltip"]').toArray()) {
+            tooltips.push($(el).data('bs.tooltip'));
+        }
+
+        this.popover = this.$target.data('bs.popover');
+        this.$target.on('mousedown.link_popover', (e) => {
+            if (!popoverShown) {
+                this.$target.popover('show');
+            }
+        });
+        this.$target.on('href_changed.link_popover', (e) => {
+            // Do not change shown/hidden state.
+            if (popoverShown) {
+                this._loadAsyncLinkPreview();
+            }
+        });
+        const onClickDocument = (e) => {
+            if (popoverShown) {
+                const hierarchy = [e.target, ...ancestors(e.target)];
+                if (
+                    !(
+                        hierarchy.includes(this.$target[0]) ||
+                        (hierarchy.includes(this.$el[0]) &&
+                            !hierarchy.some(x => x.tagName && x.tagName === 'A' && (x === this.$urlLink[0] || x === this.$fullUrl[0])))
+                    )
+                ) {
+                    // Note: For buttons of the popover, their listeners should
+                    // handle the hide themselves to avoid race conditions.
+                    this.popover.hide();
+                }
+            }
+        };
+        $(document).on('mouseup.link_popover', onClickDocument);
+        if (document !== this.options.wysiwyg.odooEditor.document) {
+            $(this.options.wysiwyg.odooEditor.document).on('mouseup.link_popover', onClickDocument);
+        }
 
         return this._super(...arguments);
     },
@@ -79,8 +164,17 @@ const LinkPopoverWidget = Widget.extend({
         // leak. However, it is only one leak per click on a link during edit
         // mode so this should not be a huge problem.
         this.$target.off('.link_popover');
+        $(document).off('.link_popover');
+        $(this.options.wysiwyg.odooEditor.document).off('.link_popover');
         this.$target.popover('dispose');
         return this._super(...arguments);
+    },
+
+    /**
+     *  Hide the popover.
+     */
+    hide() {
+        this.$target.popover('hide');
     },
 
     //--------------------------------------------------------------------------
@@ -95,6 +189,11 @@ const LinkPopoverWidget = Widget.extend({
      */
     async _loadAsyncLinkPreview() {
         let url;
+        if (this.target.href === '') {
+            this._resetPreview('');
+            this.$previewFaviconFa.removeClass('fa-globe').addClass('fa-question-circle-o');
+            return;
+        }
         try {
             url = new URL(this.target.href); // relative to absolute
         } catch (e) {
@@ -121,7 +220,7 @@ const LinkPopoverWidget = Widget.extend({
             // would need to fetch the page through the server (s2s), involving
             // enduser fetching problematic pages such as illicit content.
             this.$previewFaviconImg.attr({
-                'src': `https://www.google.com/s2/favicons?sz=16&domain=${url}`
+                'src': `https://www.google.com/s2/favicons?sz=16&domain=${encodeURIComponent(url)}`
             }).removeClass('d-none');
             this.$previewFaviconFa.addClass('d-none');
         } else {
@@ -156,9 +255,9 @@ const LinkPopoverWidget = Widget.extend({
      */
     _resetPreview(url) {
         this.$previewFaviconImg.addClass('d-none');
-        this.$previewFaviconFa.removeClass('d-none').addClass('fa-globe');
-        this.$urlLink.text(url).attr('href', url);
-        this.$fullUrl.text(url).addClass('d-none').removeClass('o_we_webkit_box');
+        this.$previewFaviconFa.removeClass('d-none fa-question-circle-o fa-envelope-o fa-phone').addClass('fa-globe');
+        this.$urlLink.add(this.$fullUrl).text(url || _t('No URL specified')).attr('href', url || null);
+        this.$fullUrl.addClass('d-none').removeClass('o_we_webkit_box');
     },
 
     //--------------------------------------------------------------------------
@@ -174,11 +273,13 @@ const LinkPopoverWidget = Widget.extend({
      * @param {Event} ev
      */
     _onEditLinkClick(ev) {
-        $('#wrapwrap').data('wysiwyg').toggleLinkTools({
+        ev.preventDefault();
+        this.options.wysiwyg.toggleLinkTools({
             forceOpen: true,
             link: this.$target[0],
         });
         ev.stopImmediatePropagation();
+        this.popover.hide();
     },
     /**
      * Removes the link/anchor.
@@ -187,21 +288,23 @@ const LinkPopoverWidget = Widget.extend({
      * @param {Event} ev
      */
     _onRemoveLinkClick(ev) {
-        // TODO surely there is better to do than finding the editor instance in the DOM?
-        $('#wrapwrap').data('wysiwyg').odooEditor.execCommand('unlink');
+        ev.preventDefault();
+        this.options.wysiwyg.removeLink();
         ev.stopImmediatePropagation();
+        this.popover.hide();
     },
 });
 
-LinkPopoverWidget.createFor = async function (parent, targetEl) {
+LinkPopoverWidget.createFor = async function (parent, targetEl, options) {
     const noLinkPopoverClass = ".o_no_link_popover, .carousel-control-prev, .carousel-control-next, .dropdown-toggle";
     // Target might already have a popover, eg cart icon in navbar
     const alreadyPopover = $(targetEl).data('bs.popover');
     if (alreadyPopover || $(targetEl).is(noLinkPopoverClass) || !!$(targetEl).parents(noLinkPopoverClass).length) {
         return null;
     }
-    const popoverWidget = new this(parent, targetEl);
-    return popoverWidget.appendTo(targetEl).then(() => popoverWidget);
+    const popoverWidget = new this(parent, targetEl, options);
+    await popoverWidget.appendTo(targetEl);
+    return popoverWidget;
 };
 
 export default LinkPopoverWidget;

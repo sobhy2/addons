@@ -105,10 +105,12 @@ export class MessageList extends Component {
             switch (hint.type) {
                 case 'change-of-thread-cache':
                 case 'member-list-hidden':
+                case 'adjust-scroll':
                     // thread just became visible, the goal is to restore its
                     // saved position if it exists or scroll to the end
                     this._adjustScrollFromModel();
                     break;
+                case 'message-posted':
                 case 'message-received':
                 case 'messages-loaded':
                 case 'new-messages-loaded':
@@ -120,6 +122,9 @@ export class MessageList extends Component {
                     // messages have been added at the start, keep the current
                     // position
                     this._adjustScrollForExtraMessagesAtTheStart();
+                    break;
+                case 'highlight-reply':
+                    this._highlightMessageView(hint.data);
                     break;
             }
             if (threadView && threadView.exists()) {
@@ -253,6 +258,19 @@ export class MessageList extends Component {
             return this.props.getScrollableElement();
         } else {
             return this.el;
+        }
+    }
+
+    /**
+     * Scrolls to a given message view and briefly highlights it.
+     *
+     * @private
+     * @param {mail.message_view} messageView
+     */
+    _highlightMessageView(messageView) {
+        if (messageView.exists() && messageView.component && messageView.component.el) {
+            messageView.component.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            messageView.highlight();
         }
     }
 

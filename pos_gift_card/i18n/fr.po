@@ -4,7 +4,11 @@
 # 
 # Translators:
 # Martin Trigaux, 2021
-# Alexandra Jubert <aju@odoo.com>, 2021
+# Alexandra Jubert, 2021
+# RHTodoo, 2021
+# Grégory Schreiner <gregory@mokatourisme.fr>, 2022
+# Cécile Collart <cco@odoo.com>, 2022
+# Jolien De Paepe, 2023
 # 
 msgid ""
 msgstr ""
@@ -12,18 +16,18 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-09-14 10:29+0000\n"
 "PO-Revision-Date: 2021-09-14 12:25+0000\n"
-"Last-Translator: Alexandra Jubert <aju@odoo.com>, 2021\n"
-"Language-Team: French (https://www.transifex.com/odoo/teams/41243/fr/)\n"
+"Last-Translator: Jolien De Paepe, 2023\n"
+"Language-Team: French (https://app.transifex.com/odoo/teams/41243/fr/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
 "Language: fr\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Plural-Forms: nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
 
 #. module: pos_gift_card
 #: model_terms:ir.ui.view,arch_db:pos_gift_card.gift_card_template
 msgid "<strong>Gift Card Code</strong>"
-msgstr ""
+msgstr "<strong>Code de la carte cadeau</strong>"
 
 #. module: pos_gift_card
 #. openerp-web
@@ -31,12 +35,12 @@ msgstr ""
 #: code:addons/pos_gift_card/static/src/xml/GiftCardPopup.xml:0
 #, python-format
 msgid "Amount of the gift card:"
-msgstr ""
+msgstr "Montant de la carte cadeau"
 
 #. module: pos_gift_card
 #: model_terms:ir.ui.view,arch_db:pos_gift_card.gift_card_template
 msgid "Barcode"
-msgstr "Code barre"
+msgstr "Code-barres"
 
 #. module: pos_gift_card
 #: model:ir.model,name:pos_gift_card.model_barcode_rule
@@ -46,12 +50,12 @@ msgstr "Règle de code-barres"
 #. module: pos_gift_card
 #: model:ir.model.fields,field_description:pos_gift_card.field_pos_order_line__generated_gift_card_ids
 msgid "Bought Gift Card"
-msgstr ""
+msgstr "Carte cadeau achetée"
 
 #. module: pos_gift_card
 #: model:ir.model.fields,field_description:pos_gift_card.field_gift_card__buy_pos_order_line_id
 msgid "Buy Pos Order Line"
-msgstr ""
+msgstr "Acheter ligne de commande PdV"
 
 #. module: pos_gift_card
 #. openerp-web
@@ -64,14 +68,14 @@ msgstr "Annuler"
 #. module: pos_gift_card
 #: model_terms:ir.ui.view,arch_db:pos_gift_card.gift_card_template
 msgid "Card expires"
-msgstr ""
+msgstr "Carte expire "
 
 #. module: pos_gift_card
 #. openerp-web
 #: code:addons/pos_gift_card/static/src/xml/GiftCardPopup.xml:0
 #, python-format
 msgid "Check a gift card"
-msgstr ""
+msgstr "Vérifier une carte cadeau"
 
 #. module: pos_gift_card
 #. openerp-web
@@ -87,12 +91,12 @@ msgstr "Confirmer"
 #. module: pos_gift_card
 #: model:ir.model.fields,help:pos_gift_card.field_pos_order_line__gift_card_id
 msgid "Deducted from this Gift Card"
-msgstr ""
+msgstr "Déduit de cette carte cadeau"
 
 #. module: pos_gift_card
 #: model:ir.model.fields,help:pos_gift_card.field_pos_config__gift_card_settings
 msgid "Defines the way you want to set your gift cards."
-msgstr ""
+msgstr "Indique la manière dont vous souhaitez définir vos cartes cadeau."
 
 #. module: pos_gift_card
 #. openerp-web
@@ -102,19 +106,19 @@ msgstr ""
 #: code:addons/pos_gift_card/static/src/xml/GiftCardPopup.xml:0
 #, python-format
 msgid "Discard"
-msgstr "Annuler"
+msgstr "Ignorer"
 
 #. module: pos_gift_card
 #: model:ir.model.fields.selection,name:pos_gift_card.selection__pos_config__gift_card_settings__create_set
 msgid "Generate a new barcode and set a price"
-msgstr ""
+msgstr "Générer un nouveau code-barres et définir la valeur"
 
 #. module: pos_gift_card
 #. openerp-web
 #: code:addons/pos_gift_card/static/src/xml/GiftCardPopup.xml:0
 #, python-format
 msgid "Generate barcode"
-msgstr ""
+msgstr "Générer un code-barres"
 
 #. module: pos_gift_card
 #. openerp-web
@@ -129,7 +133,7 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:pos_gift_card.res_config_view_form_inherit_pos_coupon
 #, python-format
 msgid "Gift Card"
-msgstr ""
+msgstr "Carte cadeau"
 
 #. module: pos_gift_card
 #. openerp-web
@@ -139,12 +143,12 @@ msgstr ""
 #: code:addons/pos_gift_card/static/src/xml/GiftCardPopup.xml:0
 #, python-format
 msgid "Gift Card Barcode:"
-msgstr ""
+msgstr "Code-barres de la carte cadeau :"
 
 #. module: pos_gift_card
 #: model:ir.model.fields,field_description:pos_gift_card.field_pos_order__gift_card_count
 msgid "Gift Card Count"
-msgstr ""
+msgstr "Nombre de cartes-cadeaux"
 
 #. module: pos_gift_card
 #. openerp-web
@@ -152,13 +156,13 @@ msgstr ""
 #: code:addons/pos_gift_card/static/src/js/PaymentScreen.js:0
 #, python-format
 msgid "Gift Card Error"
-msgstr ""
+msgstr "Erreur carte cadeau"
 
 #. module: pos_gift_card
 #: model:ir.model.fields,field_description:pos_gift_card.field_pos_config__gift_card_product_id
 #: model_terms:ir.ui.view,arch_db:pos_gift_card.pos_gift_card_config_view_form
 msgid "Gift Card Product"
-msgstr ""
+msgstr "Article carte cadeau"
 
 #. module: pos_gift_card
 #: model:ir.ui.menu,name:pos_gift_card.pos_gift_card_menu
@@ -168,31 +172,31 @@ msgstr "Cartes cadeau"
 #. module: pos_gift_card
 #: model:ir.model.fields,field_description:pos_gift_card.field_pos_config__gift_card_settings
 msgid "Gift Cards settings"
-msgstr ""
+msgstr "Configuration des cartes cadeau"
 
 #. module: pos_gift_card
 #. openerp-web
 #: code:addons/pos_gift_card/static/src/js/PaymentScreen.js:0
 #, python-format
 msgid "Gift card balance is too low."
-msgstr ""
+msgstr "Le solde de la carte cadeau est insuffisant."
 
 #. module: pos_gift_card
 #. openerp-web
 #: code:addons/pos_gift_card/static/src/js/PaymentScreen.js:0
 #, python-format
 msgid "Gift card is not valid."
-msgstr ""
+msgstr "La carte cadeau n'est pas valide."
 
 #. module: pos_gift_card
 #: model_terms:ir.ui.view,arch_db:pos_gift_card.pos_gift_card_config_view_form
 msgid "Gift card settings"
-msgstr ""
+msgstr "Configuration de la carte cadeau"
 
 #. module: pos_gift_card
 #: model_terms:ir.ui.view,arch_db:pos_gift_card.gift_card_template
 msgid "Here is your gift card!"
-msgstr ""
+msgstr "Voici votre carte cadeau !"
 
 #. module: pos_gift_card
 #: model:ir.model,name:pos_gift_card.model_pos_config
@@ -212,43 +216,57 @@ msgstr "Commandes du point de vente"
 #. module: pos_gift_card
 #: model:ir.model.fields,help:pos_gift_card.field_gift_card__buy_pos_order_line_id
 msgid "Pos Order line where this gift card has been bought."
-msgstr ""
+msgstr "Ligne de commande PdV où des cartes cadeau ont été achetées."
 
 #. module: pos_gift_card
 #: model:ir.model.fields,field_description:pos_gift_card.field_gift_card__redeem_pos_order_line_ids
 msgid "Pos Redeems"
-msgstr ""
+msgstr "Utilisation dans le PdV"
 
 #. module: pos_gift_card
 #. openerp-web
 #: code:addons/pos_gift_card/static/src/xml/GiftCardPopup.xml:0
 #, python-format
 msgid "Remaining amount of the gift card:"
-msgstr ""
+msgstr "Montant restant sur la carte cadeau"
 
 #. module: pos_gift_card
 #: model:ir.model.fields.selection,name:pos_gift_card.selection__pos_config__gift_card_settings__scan_set
 msgid "Scan an existing barcode and set a price"
-msgstr ""
+msgstr "Scanner un code-barres existant et définir sa valeur"
 
 #. module: pos_gift_card
 #: model:ir.model.fields.selection,name:pos_gift_card.selection__pos_config__gift_card_settings__scan_use
 msgid "Scan an existing barcode with an existing price"
-msgstr ""
+msgstr "Scanner un code-barres existant ayant une valeur prédéfinie"
 
 #. module: pos_gift_card
 #. openerp-web
 #: code:addons/pos_gift_card/static/src/xml/GiftCardPopup.xml:0
 #, python-format
 msgid "Scan and set price on gift card"
-msgstr ""
+msgstr "Scanner et définir la valeur de la carte cadeau"
 
 #. module: pos_gift_card
 #. openerp-web
 #: code:addons/pos_gift_card/static/src/xml/GiftCardPopup.xml:0
 #, python-format
 msgid "Scan gift card"
-msgstr ""
+msgstr "Scanner la carte cadeau"
+
+#. module: pos_gift_card
+#. openerp-web
+#: code:addons/pos_gift_card/static/src/js/GiftCardPopup.js:0
+#, python-format
+msgid "This gift card has already been sold"
+msgstr "Cette carte cadeau a déjà été vendue"
+
+#. module: pos_gift_card
+#. openerp-web
+#: code:addons/pos_gift_card/static/src/js/models.js:0
+#, python-format
+msgid "This gift card is already applied"
+msgstr "Cette carte-cadeau est déjà appliquée"
 
 #. module: pos_gift_card
 #: model:ir.model.fields,help:pos_gift_card.field_pos_config__gift_card_product_id
@@ -265,4 +283,11 @@ msgstr "Type"
 #: code:addons/pos_gift_card/static/src/xml/GiftCardPopup.xml:0
 #, python-format
 msgid "Use a gift card"
-msgstr ""
+msgstr "Utiliser une carte cadeau"
+
+#. module: pos_gift_card
+#. openerp-web
+#: code:addons/pos_gift_card/static/src/js/GiftCardPopup.js:0
+#, python-format
+msgid "You cannot sell a gift card that has already been sold"
+msgstr "Vous ne pouvez pas vendre une carte-cadeau qui a déjà été vendue"

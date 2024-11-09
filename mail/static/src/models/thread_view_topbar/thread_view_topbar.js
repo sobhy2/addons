@@ -2,38 +2,38 @@
 
 import { registerNewModel } from '@mail/model/model_core';
 import { attr, many2one, one2one } from '@mail/model/model_field';
-import { clear } from '@mail/model/model_field_command';
+import { clear, insertAndReplace, replace } from '@mail/model/model_field_command';
 
 function factory(dependencies) {
 
-    class ThreadViewTopBar extends dependencies['mail.model'] {
+    class ThreadViewTopbar extends dependencies['mail.model'] {
 
         /**
          * @override
          */
         _created() {
             // Bind necessary until OWL supports arrow function in handlers: https://github.com/odoo/owl/issues/876
-            this.onClickUserName = this.onClickUserName.bind(this);
             this.onClickHideMemberList = this.onClickHideMemberList.bind(this);
             this.onClickInboxMarkAllAsRead = this.onClickInboxMarkAllAsRead.bind(this);
             this.onClickInviteButton = this.onClickInviteButton.bind(this);
             this.onClickShowMemberList = this.onClickShowMemberList.bind(this);
             this.onClickTopbarThreadName = this.onClickTopbarThreadName.bind(this);
             this.onClickUnstarAll = this.onClickUnstarAll.bind(this);
+            this.onClickUserName = this.onClickUserName.bind(this);
             this.onInputGuestNameInput = this.onInputGuestNameInput.bind(this);
             this.onInputThreadNameInput = this.onInputThreadNameInput.bind(this);
             this.onKeyDownGuestNameInput = this.onKeyDownGuestNameInput.bind(this);
             this.onKeyDownThreadNameInput = this.onKeyDownThreadNameInput.bind(this);
             this.onMouseEnterUserName = this.onMouseEnterUserName.bind(this);
-            this.onMouseEnterTopBarThreadName = this.onMouseEnterTopBarThreadName.bind(this);
+            this.onMouseEnterTopbarThreadName = this.onMouseEnterTopbarThreadName.bind(this);
             this.onMouseLeaveUserName = this.onMouseLeaveUserName.bind(this);
-            this.onMouseLeaveTopBarThreadName = this.onMouseLeaveTopBarThreadName.bind(this);
+            this.onMouseLeaveTopbarThreadName = this.onMouseLeaveTopbarThreadName.bind(this);
             this._onClickCaptureGlobal = this._onClickCaptureGlobal.bind(this);
             this.onClickTopbarThreadDescription = this.onClickTopbarThreadDescription.bind(this);
             this.onInputThreadDescriptionInput = this.onInputThreadDescriptionInput.bind(this);
             this.onKeyDownThreadDescriptionInput = this.onKeyDownThreadDescriptionInput.bind(this);
-            this.onMouseEnterTopBarThreadDescription = this.onMouseEnterTopBarThreadDescription.bind(this);
-            this.onMouseLeaveTopBarThreadDescription = this.onMouseLeaveTopBarThreadDescription.bind(this);
+            this.onMouseEnterTopbarThreadDescription = this.onMouseEnterTopbarThreadDescription.bind(this);
+            this.onMouseLeaveTopbarThreadDescription = this.onMouseLeaveTopbarThreadDescription.bind(this);
             document.addEventListener('click', this._onClickCaptureGlobal, true);
             return super._created();
         }
@@ -75,12 +75,10 @@ function factory(dependencies) {
          * @param {MouseEvent} ev
          */
         onClickInviteButton(ev) {
-            if (this.threadView.channelInvitationForm.component) {
-                return;
-            }
-            if (!this.messaging.isCurrentUserGuest) {
-                this.threadView.channelInvitationForm.update({ doFocusOnSearchInput: true });
-                this.threadView.channelInvitationForm.searchPartnersToInvite();
+            if (this.invitePopoverView) {
+                this.update({ invitePopoverView: clear() });
+            } else {
+                this.openInvitePopoverView();
             }
         }
 
@@ -124,11 +122,7 @@ function factory(dependencies) {
          * @param {MouseEvent} ev
          */
         onClickTopbarThreadDescription(ev) {
-            if (!this.thread || !this.thread.isChannelDescriptionChangeable) {
-                return;
-            }
-            // Guests cannot edit description
-            if (this.messaging.isCurrentUserGuest) {
+            if (!this.thread || !this.thread.isDescriptionEditableByCurrentUser) {
                 return;
             }
             const selection = window.getSelection();
@@ -168,7 +162,7 @@ function factory(dependencies) {
                 doSetSelectionEndOnGuestNameInput: Math.max(selection.focusOffset, selection.anchorOffset),
                 doSetSelectionStartOnGuestNameInput: Math.min(selection.focusOffset, selection.anchorOffset),
                 isEditingGuestName: true,
-                isMouseOverUserInfo: false,
+                isMouseOverUserName: false,
                 pendingGuestName: this.messaging.currentGuest.name,
             });
         }
@@ -277,7 +271,7 @@ function factory(dependencies) {
                     }
                     break;
                 case 'Escape':
-                    this._discardGuestRename();
+                    this._resetGuestNameInput();
                     break;
             }
         }
@@ -319,7 +313,7 @@ function factory(dependencies) {
          *
          * @param {MouseEvent} ev
          */
-        onMouseEnterTopBarThreadName(ev) {
+        onMouseEnterTopbarThreadName(ev) {
             if (!this.thread || !this.thread.isChannelRenamable) {
                 return;
             }
@@ -331,20 +325,20 @@ function factory(dependencies) {
          *
          * @param {MouseEvent} ev
          */
-        onMouseEnterTopBarThreadDescription(ev) {
-            if (!this.thread || !this.thread.isChannelDescriptionChangeable) {
+        onMouseEnterTopbarThreadDescription(ev) {
+            if (!this.exists()) {
                 return;
             }
             this.update({ isMouseOverThreadDescription: true });
         }
 
         /**
-         * Handles mouseenter on the "guest name" of this top bar.
+         * Handles mouseenter on the "user name" of this top bar.
          *
          * @param {MouseEvent} ev
          */
         onMouseEnterUserName(ev) {
-            this.update({ isMouseOverUserInfo: true });
+            this.update({ isMouseOverUserName: true });
         }
 
         /**
@@ -352,7 +346,7 @@ function factory(dependencies) {
          *
          * @param {MouseEvent} ev
          */
-        onMouseLeaveTopBarThreadName(ev) {
+        onMouseLeaveTopbarThreadName(ev) {
             this.update({ isMouseOverThreadName: false });
         }
 
@@ -361,17 +355,34 @@ function factory(dependencies) {
          *
          * @param {MouseEvent} ev
          */
-        onMouseLeaveTopBarThreadDescription(ev) {
+        onMouseLeaveTopbarThreadDescription(ev) {
             this.update({ isMouseOverThreadDescription: false });
         }
 
         /**
-         * Handles mouseleave on the "guest name" of this top bar.
+         * Handles mouseleave on the "user name" of this top bar.
          *
          * @param {MouseEvent} ev
          */
         onMouseLeaveUserName(ev) {
-            this.update({ isMouseOverUserInfo: false });
+            this.update({ isMouseOverUserName: false });
+        }
+
+        /**
+         * Open the invite popover view in this thread view topbar.
+         */
+        openInvitePopoverView() {
+            this.threadView.update({ channelInvitationForm: insertAndReplace() });
+            this.update({
+                invitePopoverView: insertAndReplace({
+                    channelInvitationForm: replace(this.threadView.channelInvitationForm),
+                }),
+            });
+            if (this.messaging.isCurrentUserGuest) {
+                return;
+            }
+            this.threadView.channelInvitationForm.update({ doFocusOnSearchInput: true });
+            this.threadView.channelInvitationForm.searchPartnersToInvite();
         }
 
         //----------------------------------------------------------------------
@@ -382,13 +393,13 @@ function factory(dependencies) {
          * @private
          */
         _applyGuestRename() {
-            this.update({ isEditingGuestName: false });
             if (this.hasGuestNameChanged) {
                 this.messaging.models['mail.guest'].performRpcGuestUpdateName({
                     id: this.messaging.currentGuest.id,
                     name: this.pendingGuestName.trim(),
                 });
             }
+            this._resetGuestNameInput();
         }
 
         /**
@@ -427,6 +438,20 @@ function factory(dependencies) {
 
         /**
          * @private
+         * @returns {string}
+         */
+        _computeAvatarUrl() {
+            if (this.messaging.isCurrentUserGuest) {
+                if (!this.thread) {
+                    return '';
+                }
+                return `/mail/channel/${this.thread.id}/guest/${this.messaging.currentGuest.id}/avatar_128?unique=${this.messaging.currentGuest.name}`;
+            }
+            return this.messaging.currentPartner.avatarUrl;
+        }
+
+        /**
+         * @private
          * @returns {boolean}
          */
         _computeHasGuestNameChanged() {
@@ -438,12 +463,21 @@ function factory(dependencies) {
 
         /**
          * @private
+         * @returns {boolean}
          */
-        _discardGuestRename() {
-            this.update({
-                isEditingGuestName: false,
-                pendingGuestName: clear(),
-            });
+        _computeHasDescriptionArea() {
+            return Boolean(this.thread && (this.thread.description || this.thread.isDescriptionEditableByCurrentUser));
+        }
+
+        /**
+         * @private
+         * @returns {boolean}
+         */
+        _computeIsDescriptionHighlighted() {
+            return Boolean(
+                this.isMouseOverThreadDescription &&
+                this.thread.isDescriptionEditableByCurrentUser
+            );
         }
 
         /**
@@ -475,7 +509,7 @@ function factory(dependencies) {
                 if (this.pendingGuestName.trim() !== '') {
                     this._applyGuestRename();
                 } else {
-                    this._discardGuestRename();
+                    this._resetGuestNameInput();
                 }
             }
             if (this.isEditingThreadName && this.threadNameInputRef.el && !this.threadNameInputRef.el.contains(ev.target)) {
@@ -486,9 +520,26 @@ function factory(dependencies) {
             }
         }
 
+        /**
+         * @private
+         */
+        _resetGuestNameInput() {
+            this.update({
+                isEditingGuestName: false,
+                pendingGuestName: clear(),
+            });
+        }
+
     }
 
-    ThreadViewTopBar.fields = {
+    ThreadViewTopbar.fields = {
+        /**
+         * States the URL of the profile picture of the current user.
+         */
+        avatarUrl: attr({
+            compute: '_computeAvatarUrl',
+            readonly: true,
+        }),
         /**
          * Determines whether the guest name input needs to be focused.
          */
@@ -589,10 +640,35 @@ function factory(dependencies) {
             readonly: true,
         }),
         /**
+         * Determines whether description area should display on top bar.
+         */
+        hasDescriptionArea: attr({
+            compute: '_computeHasDescriptionArea',
+        }),
+        /**
          * Determines whether the guest is currently being renamed.
          */
         isEditingGuestName: attr({
             default: false,
+        }),
+        /**
+         * States the OWL ref of the invite button.
+         * Useful to provide anchor for the invite popover positioning.
+         */
+        inviteButtonRef: attr(),
+        /**
+         * If set, this is the record of invite button popover that is currently
+         * open in the topbar.
+         */
+        invitePopoverView: one2one('mail.popover_view', {
+            isCausal: true,
+            inverse: 'threadViewTopbarOwner',
+        }),
+        /**
+         * States whether this thread description is highlighted.
+         */
+        isDescriptionHighlighted: attr({
+            compute: '_computeIsDescriptionHighlighted'
         }),
         /**
          * Determines whether this thread is currently being renamed.
@@ -621,10 +697,10 @@ function factory(dependencies) {
             default: false,
         }),
         /**
-         * States whether the cursor is currently over the guest name in this
-         * top bar.
+         * States whether the cursor is currently over the user name in this top
+         * bar.
          */
-        isMouseOverUserInfo: attr({
+        isMouseOverUserName: attr({
             default: false,
         }),
         /**
@@ -679,10 +755,10 @@ function factory(dependencies) {
             required: true,
         }),
     };
-    ThreadViewTopBar.identifyingFields = ['threadView'];
-    ThreadViewTopBar.modelName = 'mail.thread_view_topbar';
+    ThreadViewTopbar.identifyingFields = ['threadView'];
+    ThreadViewTopbar.modelName = 'mail.thread_view_topbar';
 
-    return ThreadViewTopBar;
+    return ThreadViewTopbar;
 }
 
 registerNewModel('mail.thread_view_topbar', factory);

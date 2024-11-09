@@ -5,16 +5,19 @@
 # Translators:
 # Martin Trigaux, 2021
 # Yenthe Van Ginneken <yenthespam@gmail.com>, 2021
+# 04a2cd0fd6ee22172c36ea91f27a38c5_60041bf, 2021
 # Erwin van der Ploeg <erwin@odooexperts.nl>, 2021
+# Jolien De Paepe, 2023
+# Wil Odoo, 2024
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~14.5\n"
+"Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-09-14 10:28+0000\n"
+"POT-Creation-Date: 2024-08-14 15:42+0000\n"
 "PO-Revision-Date: 2021-09-14 12:26+0000\n"
-"Last-Translator: Erwin van der Ploeg <erwin@odooexperts.nl>, 2021\n"
-"Language-Team: Dutch (https://www.transifex.com/odoo/teams/41243/nl/)\n"
+"Last-Translator: Wil Odoo, 2024\n"
+"Language-Team: Dutch (https://app.transifex.com/odoo/teams/41243/nl/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
@@ -212,19 +215,19 @@ msgid ""
 "        <tbody>\n"
 "            <tr><td>\n"
 "                <!-- We use the logo of the company that created the survey (to handle multi company cases) -->\n"
-"                <a href=\"/\"><img src=\"/logo.png?company=${object.survey_id.create_uid.company_id.id}\" style=\"vertical-align:baseline;max-width:100px;\"/></a>\n"
+"                <a href=\"/\"><img t-attf-src=\"/logo.png?company={{ object.survey_id.create_uid.company_id.id }}\" style=\"vertical-align:baseline;max-width:100px;\"/></a>\n"
 "            </td><td style=\"text-align:right;vertical-align:middle;\">\n"
-"                    Certification: ${object.survey_id.display_name}\n"
+"                    Certification: <t t-out=\"object.survey_id.display_name or ''\">Feedback Form</t>\n"
 "            </td></tr>\n"
 "        </tbody>\n"
 "    </table>\n"
 "    <table style=\"width:600px;margin:0px auto;background:white;border:1px solid #e1e1e1;\">\n"
 "        <tbody>\n"
 "            <tr><td style=\"padding:15px 20px 10px 20px;\">\n"
-"                <p>Dear <span>${object.partner_id.name or 'participant'}</span></p>\n"
+"                <p>Dear <span t-out=\"object.partner_id.name or 'participant'\">participant</span></p>\n"
 "                <p>\n"
 "                    Here is, in attachment, your certification document for\n"
-"                        <strong>${object.survey_id.display_name}</strong>\n"
+"                        <strong t-out=\"object.survey_id.display_name or ''\">Feedback Form</strong>\n"
 "                </p>\n"
 "                <p>Congratulations for succeeding the test!</p>\n"
 "            </td></tr>\n"
@@ -237,20 +240,20 @@ msgstr ""
 "    <table style=\"width:600px;margin:5px auto;\">\n"
 "        <tbody>\n"
 "            <tr><td>\n"
-"                <!-- We use the logo of the company that created the survey (to handle multi company cases) -->\n"
-"                <a href=\"/\"><img src=\"/logo.png?company=${object.survey_id.create_uid.company_id.id}\" style=\"vertical-align:baseline;max-width:100px;\"/></a>\n"
+"                <!-- We gebruiken het logo van het bedrijf dat de enquête heeft gemaakt (om gevallen van meerdere bedrijven af te handelen) -->\n"
+"                <a href=\"/\"><img t-attf-src=\"/logo.png?company={{ object.survey_id.create_uid.company_id.id }}\" style=\"vertical-align:baseline;max-width:100px;\"/></a>\n"
 "            </td><td style=\"text-align:right;vertical-align:middle;\">\n"
-"                    Certificering: ${object.survey_id.display_name}\n"
+"                    Certificering: <t t-out=\"object.survey_id.display_name or ''\">Feedback Form</t>\n"
 "            </td></tr>\n"
 "        </tbody>\n"
 "    </table>\n"
 "    <table style=\"width:600px;margin:0px auto;background:white;border:1px solid #e1e1e1;\">\n"
 "        <tbody>\n"
 "            <tr><td style=\"padding:15px 20px 10px 20px;\">\n"
-"                <p>Beste <span>${object.partner_id.name or 'participant'}</span></p>\n"
+"                <p>Beste <span t-out=\"object.partner_id.name or 'participant'\">deelnemer</span></p>\n"
 "                <p>\n"
-"                    Hier is, in bijlage, je certificeringsdocument voor:\n"
-"                        <strong>${object.survey_id.display_name}</strong>\n"
+"                    Hier is, in de bijlage, je certificeringsdocument voor:\n"
+"                        <strong t-out=\"object.survey_id.display_name or ''\">Feedback Form</strong>\n"
 "                </p>\n"
 "                <p>Gefeliciteerd met het slagen voor de test!</p>\n"
 "            </td></tr>\n"
@@ -264,24 +267,26 @@ msgstr ""
 msgid ""
 "<div style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
 "    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
-"        Dear ${object.partner_id.name or 'participant'}<br/><br/>\n"
-"        % if object.survey_id.certification:\n"
+"        Dear <t t-out=\"object.partner_id.name or 'participant'\">participant</t><br/><br/>\n"
+"        <t t-if=\"object.survey_id.certification\">\n"
 "            You have been invited to take a new certification.\n"
-"        % else:\n"
+"        </t>\n"
+"        <t t-else=\"\">\n"
 "            We are conducting a survey and your response would be appreciated.\n"
-"        % endif\n"
+"        </t>\n"
 "        <div style=\"margin: 16px 0px 16px 0px;\">\n"
-"            <a href=\"${(object.get_start_url()) | safe}\" style=\"background-color: #875A7B; padding: 8px 16px 8px 16px; text-decoration: none; color: #fff; border-radius: 5px; font-size:13px;\">\n"
-"                % if object.survey_id.certification:\n"
+"            <a t-att-href=\"(object.get_start_url())\" style=\"background-color: #875A7B; padding: 8px 16px 8px 16px; text-decoration: none; color: #fff; border-radius: 5px; font-size:13px;\">\n"
+"                <t t-if=\"object.survey_id.certification\">\n"
 "                    Start Certification\n"
-"                % else:\n"
+"                </t>\n"
+"                <t t-else=\"\">\n"
 "                    Start Survey\n"
-"                % endif\n"
+"                </t>\n"
 "            </a>\n"
 "        </div>\n"
-"        % if object.deadline:\n"
-"            Please answer the survey for ${format_date(object.deadline)}.<br/><br/>\n"
-"        % endif\n"
+"        <t t-if=\"object.deadline\">\n"
+"            Please answer the survey for <t t-out=\"format_date(object.deadline) or ''\">05/05/2021</t>.<br/><br/>\n"
+"        </t>\n"
 "        Thank you for your participation.\n"
 "    </p>\n"
 "</div>\n"
@@ -289,27 +294,30 @@ msgid ""
 msgstr ""
 "<div style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
 "    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
-"       Beste ${object.partner_id.name or 'participant'}<br/><br/>\n"
-"       % if object.survey_id.certification:\n"
-"          Je bent uitgenodigd om een nieuwe certificering te behalen.\n"
-"       % else:\n"
-"           We voeren een enquête uit en je reactie wordt op prijs gesteld.\n"
-"       % endif\n"
-"       <div style=\"margin: 16px 0px 16px 0px;\">\n"
-"           <a href=\"${(object.get_start_url()) | safe}\" style=\"background-color: #875A7B; padding: 8px 16px 8px 16px; text-decoration: none; color: #fff; border-radius: 5px; font-size:13px;\">\n"
-"              % if object.survey_id.certification:\n"
-"                 Start certificatie\n"
-"         % else:\n"
-"             Start onderzoek\n"
-"         % endif\n"
-"     </a>\n"
-"  </div>\n"
-"   % if object.deadline:\n"
-"       Beantwoord de enquête voor ${format_date(object.deadline)}.<br/> <br/>\n"
-"        % endif\n"
+"        Beste <t t-out=\"object.partner_id.name or 'participant'\">deelnemer</t><br/><br/>\n"
+"        <t t-if=\"object.survey_id.certification\">\n"
+"            Je bent uitgenodigd voor een nieuwe certificering.\n"
+"        </t>\n"
+"        <t t-else=\"\">\n"
+"            We voeren een enquête uit en je reactie wordt op prijs gesteld.\n"
+"        </t>\n"
+"        <div style=\"margin: 16px 0px 16px 0px;\">\n"
+"            <a t-att-href=\"(object.get_start_url())\" style=\"background-color: #875A7B; padding: 8px 16px 8px 16px; text-decoration: none; color: #fff; border-radius: 5px; font-size:13px;\">\n"
+"                <t t-if=\"object.survey_id.certification\">\n"
+"                    Start certificering\n"
+"                </t>\n"
+"                <t t-else=\"\">\n"
+"                    Start enquête\n"
+"                </t>\n"
+"            </a>\n"
+"        </div>\n"
+"        <t t-if=\"object.deadline\">\n"
+"            Beantwoord de enquête voor <t t-out=\"format_date(object.deadline) or ''\">05/05/2021</t>.<br/><br/>\n"
+"        </t>\n"
 "        Hartelijk dank voor je deelname.\n"
-"      </p>\n"
-"</div>"
+"    </p>\n"
+"</div>\n"
+"            "
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_question_form
@@ -622,7 +630,7 @@ msgid ""
 "Enter</span>"
 msgstr ""
 "<span class=\"o_survey_enter font-weight-bold text-muted ml-2\">of druk op "
-"enter</span>"
+"Enter</span>"
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_selection_key
@@ -760,7 +768,7 @@ msgstr ""
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_fill_form
-msgid "A problem has occured"
+msgid "A problem has occurred"
 msgstr "Er heeft zich een probleem voorgedaan"
 
 #. module: survey
@@ -842,7 +850,7 @@ msgstr "Voeg een nieuwe enquête toe"
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_form
 msgid "Add a question"
-msgstr "Voeg een vraag toe"
+msgstr "Vraag toevoegen"
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_form
@@ -978,7 +986,7 @@ msgstr "Antwoorden teller"
 #. module: survey
 #: model:ir.model.fields.selection,name:survey.selection__survey_survey__access_mode__public
 msgid "Anyone with the link"
-msgstr "Iedereen met een link"
+msgstr "Iedereen met de link"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_gamification_challenge__challenge_category
@@ -1109,7 +1117,7 @@ msgstr "Avicii"
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_form
 msgid "Back Button"
-msgstr "Terug knop"
+msgstr "Terugknop"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__background_image
@@ -1192,7 +1200,7 @@ msgstr "Certificering badge"
 #, python-format
 msgid "Certification Badge is not configured for the survey %(survey_name)s"
 msgstr ""
-"Certificatiebadge is niet geconfigureerd voor de enquête %(survey_name)s"
+"Certificering badge is niet geconfigureerd voor de enquête %(survey_name)s"
 
 #. module: survey
 #: model:mail.template,report_name:survey.mail_template_certification
@@ -1223,8 +1231,8 @@ msgstr "Certificeringssjabloon"
 
 #. module: survey
 #: model:mail.template,subject:survey.mail_template_certification
-msgid "Certification: ${object.survey_id.display_name}"
-msgstr "Certificering: ${object.survey_id.display_name}"
+msgid "Certification: {{ object.survey_id.display_name }}"
+msgstr "Certificatie: {{ object.survey_id.display_name }}"
 
 #. module: survey
 #: model:ir.actions.report,name:survey.certification_report
@@ -1634,7 +1642,7 @@ msgstr "Definieer de zichtbaarheid van uitdagingen door menu's"
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_kanban
 msgid "Delete"
-msgstr "Verwijder"
+msgstr "Verwijderen"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_question__description
@@ -1670,7 +1678,7 @@ msgstr "Niet akkoord"
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_question_form
 msgid "Display"
-msgstr "Tonen"
+msgstr "Weergave"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_invite__display_name
@@ -1761,6 +1769,7 @@ msgstr "E-mailadres van de verzender"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__description_done
+#: model_terms:ir.ui.view,arch_db:survey.survey_form
 msgid "End Message"
 msgstr "Einde bericht"
 
@@ -1904,7 +1913,7 @@ msgstr "Fruit en groenten"
 #. module: survey
 #: model:ir.model,name:survey.model_gamification_badge
 msgid "Gamification Badge"
-msgstr "Gamification badge"
+msgstr "Gamificatie badge"
 
 #. module: survey
 #: model:ir.model,name:survey.model_gamification_challenge
@@ -1920,7 +1929,7 @@ msgstr "Aardrijkskunde"
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__certification_give_badge
 msgid "Give Badge"
-msgstr "Geef badge"
+msgstr "Badge geven"
 
 #. module: survey
 #: model:survey.question,title:survey.survey_demo_quiz_p2_q3
@@ -1959,7 +1968,7 @@ msgstr "Diagram"
 #: model_terms:ir.ui.view,arch_db:survey.survey_user_input_line_view_search
 #: model_terms:ir.ui.view,arch_db:survey.survey_user_input_view_search
 msgid "Group By"
-msgstr "Groepeer op"
+msgstr "Groeperen op"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_invite__existing_mode
@@ -2115,7 +2124,7 @@ msgid ""
 "If Number is selected, it will display the number of questions answered on "
 "the total number of question to answer."
 msgstr ""
-"Als Nummer is geselecteerd, wordt het aantal beantwoorde vragen weergegeven "
+"Als Getal is geselecteerd, wordt het aantal beantwoorde vragen weergegeven "
 "op het totale aantal te beantwoorden vragen."
 
 #. module: survey
@@ -2281,7 +2290,7 @@ msgstr ""
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_fill_form_done
 msgid "If you wish, you can"
-msgstr "Als je wenst, kun je"
+msgstr "Als je wilt, kun je je"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_question_answer__value_image
@@ -2557,7 +2566,7 @@ msgstr "Login vereist"
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_auth_required
 msgid "Login required"
-msgstr "Aanmelding vereist"
+msgstr "Login vereist"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_invite__template_id
@@ -2862,7 +2871,7 @@ msgstr "Nog niet gestart"
 #: model:ir.model.fields.selection,name:survey.selection__survey_survey__progression_mode__number
 #: model:ir.model.fields.selection,name:survey.selection__survey_user_input_line__answer_type__numerical_box
 msgid "Number"
-msgstr "Nummer"
+msgstr "Getal"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__message_needaction_counter
@@ -2985,13 +2994,13 @@ msgstr "Open sessie beheerder"
 msgid ""
 "Optional translation language (ISO code) to select when sending out an "
 "email. If not set, the english version will be used. This should usually be "
-"a placeholder expression that provides the appropriate language, e.g. "
-"${object.partner_id.lang}."
+"a placeholder expression that provides the appropriate language, e.g. {{ "
+"object.partner_id.lang }}."
 msgstr ""
-"Optionele vertaling (ISO code) welke je kunt selecteren bij het versturen "
-"van een e-mail. Indien niet ingesteld, wordt de Engelse versie gebruikt. "
-"Normaliter is dit een bladwijzer welke de juiste taal aangeeft. Bijv.: "
-"${object.partner_id.lang}."
+"Optionele vertaaltaal (ISO-code) om te selecteren bij het verzenden van een "
+"e-mail. Indien niet ingesteld, wordt de Engelse versie gebruikt. Dit moet "
+"meestal een tijdelijke aanduiding zijn die de juiste taal biedt, bijv. {{ "
+"object.partner_id.lang }}."
 
 #. module: survey
 #: model:ir.model.fields,help:survey.field_survey_invite__null_value
@@ -3063,8 +3072,8 @@ msgstr "Gedeeltelijk"
 
 #. module: survey
 #: model:mail.template,subject:survey.mail_template_user_input_invite
-msgid "Participate to ${object.survey_id.display_name} survey"
-msgstr "Doe mee aan de ${object.survey_id.display_name}-enquête"
+msgid "Participate to {{ object.survey_id.display_name }} survey"
+msgstr "Deelnemen aan {{ object.survey_id.display_name }} onderzoek"
 
 #. module: survey
 #: model:ir.actions.act_window,name:survey.action_survey_user_input
@@ -3193,6 +3202,11 @@ msgstr "Producten"
 #: model:ir.model.fields,field_description:survey.field_survey_survey__progression_mode
 msgid "Progression Mode"
 msgstr "Progressiemodus"
+
+#. module: survey
+#: model_terms:ir.ui.view,arch_db:survey.survey_invite_view_form
+msgid "Public share URL"
+msgstr ""
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_question_answer__question_id
@@ -3332,7 +3346,7 @@ msgstr "Opnieuw proberen"
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__session_speed_rating
 msgid "Reward quick answers"
-msgstr "Beloon snelle antwoorden."
+msgstr "Beloon snelle antwoorden"
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.gamification_badge_form_view_simplified
@@ -3442,12 +3456,12 @@ msgstr "Soort score"
 #. module: survey
 #: model:ir.model.fields.selection,name:survey.selection__survey_survey__scoring_type__scoring_with_answers
 msgid "Scoring with answers at the end"
-msgstr "Scores met antwoorden op het einde"
+msgstr "Score met antwoorden aan het eind"
 
 #. module: survey
 #: model:ir.model.fields.selection,name:survey.selection__survey_survey__scoring_type__scoring_without_answers
 msgid "Scoring without answers at the end"
-msgstr "Scores zonder antwoorden op het einde"
+msgstr "Score zonder antwoorden aan het eind"
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_question_answer_view_search
@@ -3793,7 +3807,7 @@ msgstr "Enquêtevraag"
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_form
 msgid "Survey Time Limit"
-msgstr "Tijdslimiet voor onderzoek"
+msgstr "Tijdslimiet"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_user_input__survey_time_limit_reached
@@ -3861,7 +3875,7 @@ msgstr "Takaaki Kajita"
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_form
 msgid "Test"
-msgstr "Test"
+msgstr "Testen"
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_user_input_view_search
@@ -4315,8 +4329,8 @@ msgid ""
 "To take this survey, please close all other tabs on <strong class=\"text-"
 "danger\"/>."
 msgstr ""
-"Sluit alle andere tabbladen om deze enquête in te vullen <strong class"
-"=\"text-danger\"/>."
+"Sluit alle andere tabbladen om deze enquête in te vullen <strong "
+"class=\"text-danger\"/>."
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_survey_view_search
@@ -4429,6 +4443,11 @@ msgstr "Aantal ongelezen berichten"
 #: model_terms:ir.ui.view,arch_db:survey.survey_survey_view_search
 msgid "Upcoming Activities"
 msgstr "Aankomende activiteiten"
+
+#. module: survey
+#: model_terms:ir.ui.view,arch_db:survey.survey_invite_view_form
+msgid "Use template"
+msgstr "Sjabloon gebruiken"
 
 #. module: survey
 #: model:ir.model.fields,help:survey.field_survey_question__description
@@ -4774,6 +4793,16 @@ msgstr ""
 "hebben."
 
 #. module: survey
+#: code:addons/survey/models/survey_question.py:0
+#, python-format
+msgid ""
+"You cannot delete questions from surveys \"%(survey_names)s\" while live "
+"sessions are in progress."
+msgstr ""
+"Je kan de vragen van de enquêtes \"%(survey_names)s\"  niet verwijderen "
+"tijdens live sessies."
+
+#. module: survey
 #: code:addons/survey/models/survey_survey.py:0
 #, python-format
 msgid ""
@@ -4901,7 +4930,7 @@ msgstr "pagina's"
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_fill_form_done
 msgid "review your answers"
-msgstr "controleer je antwoorden"
+msgstr "antwoorden nakijken"
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_closed_expired

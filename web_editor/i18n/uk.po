@@ -4,16 +4,18 @@
 # 
 # Translators:
 # Martin Trigaux, 2021
-# Alina Lisnenko <alinasemeniuk1@gmail.com>, 2021
+# Bohdan Lisnenko, 2021
+# Alina Lisnenko <alina.lisnenko@erp.co.ua>, 2022
+# Wil Odoo, 2024
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~14.5\n"
+"Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-09-14 10:29+0000\n"
+"POT-Creation-Date: 2024-08-14 15:43+0000\n"
 "PO-Revision-Date: 2021-09-14 12:27+0000\n"
-"Last-Translator: Alina Lisnenko <alinasemeniuk1@gmail.com>, 2021\n"
-"Language-Team: Ukrainian (https://www.transifex.com/odoo/teams/41243/uk/)\n"
+"Last-Translator: Wil Odoo, 2024\n"
+"Language-Team: Ukrainian (https://app.transifex.com/odoo/teams/41243/uk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
@@ -25,21 +27,21 @@ msgstr ""
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 #, python-format
 msgid "%dpx (Original)"
-msgstr ""
+msgstr "%dpx (Оригінал)"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 #, python-format
 msgid "%dpx (Suggested)"
-msgstr ""
+msgstr "%dpx (Запропонований)"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 #, python-format
 msgid "%spx"
-msgstr ""
+msgstr "%spx"
 
 #. module: web_editor
 #. openerp-web
@@ -92,7 +94,7 @@ msgstr "100%"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "1977"
-msgstr ""
+msgstr "1977"
 
 #. module: web_editor
 #. openerp-web
@@ -100,7 +102,12 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 #, python-format
 msgid "1x"
-msgstr ""
+msgstr "1x"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "25"
+msgstr "25"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
@@ -113,7 +120,7 @@ msgstr "25%"
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 #, python-format
 msgid "2x"
-msgstr ""
+msgstr "2x"
 
 #. module: web_editor
 #. openerp-web
@@ -121,7 +128,7 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 #, python-format
 msgid "3x"
-msgstr ""
+msgstr "3x"
 
 #. module: web_editor
 #. openerp-web
@@ -129,7 +136,7 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 #, python-format
 msgid "4x"
-msgstr ""
+msgstr "4x"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
@@ -142,17 +149,42 @@ msgstr "50%"
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 #, python-format
 msgid "5x"
-msgstr ""
+msgstr "5x"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "90"
+msgstr "90"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "<span class=\"flex-grow-0 ml-1 text-white-50\">%</span>"
+msgstr "<span class=\"flex-grow-0 ml-1 text-white-50\">%</span>"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "<span class=\"flex-grow-0 ml-1 text-white-50\">deg</span>"
+msgstr "<span class=\"flex-grow-0 ml-1 text-white-50\">deg</span>"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "<span class=\"mr-2 ml-3\">Y</span>"
+msgstr "<span class=\"mr-2 ml-3\">Y</span>"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "<span class=\"mr-2\">X</span>"
+msgstr "<span class=\"mr-2\">X</span>"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippets
 msgid "<span>Blocks</span>"
-msgstr ""
+msgstr "<span>Блоки</span>"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippets
 msgid "<span>Style</span>"
-msgstr ""
+msgstr "<span>Стиль</span>"
 
 #. module: web_editor
 #. openerp-web
@@ -170,7 +202,7 @@ msgstr ""
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Above"
-msgstr ""
+msgstr "Вище"
 
 #. module: web_editor
 #. openerp-web
@@ -192,17 +224,18 @@ msgstr "Додати"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Add Column"
-msgstr ""
+msgstr "Додати колонку"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Add Row"
-msgstr ""
+msgstr "Додати рядок"
 
 #. module: web_editor
 #. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Add URL"
@@ -210,63 +243,84 @@ msgstr "Додати URL"
 
 #. module: web_editor
 #. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#, python-format
+msgid "Add a blockquote section."
+msgstr "Додайте блок цитати."
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#, python-format
+msgid "Add a button."
+msgstr "Додайте кнопку."
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#, python-format
+msgid "Add a code section."
+msgstr "Додайте блок коду."
+
+#. module: web_editor
+#. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Add a column left"
-msgstr ""
+msgstr "Додати колонку зліва"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Add a column right"
-msgstr ""
+msgstr "Додати колонку справа"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#, python-format
+msgid "Add a link."
+msgstr "Додайте посилання."
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Add a row above"
-msgstr ""
+msgstr "Додати рядок вище"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Add a row below"
-msgstr ""
-
-#. module: web_editor
-#. openerp-web
-#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
-#, python-format
-msgid "Add document"
-msgstr "Додати документ"
+msgstr "Додати рядок нижче"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Aden"
-msgstr ""
+msgstr "Aden"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "Airy & Zigs"
-msgstr ""
+msgstr "Airy & Zigs"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Align Center"
-msgstr ""
+msgstr "Вирівняти по центру"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Align Left"
-msgstr ""
+msgstr "Вирівняти ліворуч"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Align Right"
-msgstr ""
+msgstr "Вирівняти праворуч"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
@@ -297,7 +351,12 @@ msgstr "Усі зображення завантажено"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Alt tag"
-msgstr ""
+msgstr "Alt tag"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "Angle"
+msgstr "Кут"
 
 #. module: web_editor
 #. openerp-web
@@ -320,7 +379,7 @@ msgstr "Застосувати"
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Are you sure you want to delete the snippet: %s ?"
-msgstr ""
+msgstr "Ви впевнені, що хочете видалити цей сніпет: %s ?"
 
 #. module: web_editor
 #. openerp-web
@@ -389,7 +448,15 @@ msgstr "Фоновий колір"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "Background Position"
-msgstr ""
+msgstr "Розташування фонового зображення"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#, python-format
+msgid "Basic blocks"
+msgstr "Базові блоки"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
@@ -401,12 +468,12 @@ msgstr "Основне"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Below"
-msgstr ""
+msgstr "Нижче"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "Blobs"
-msgstr ""
+msgstr "Краплі"
 
 #. module: web_editor
 #. openerp-web
@@ -418,12 +485,12 @@ msgstr "Блокувати"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "Blocks & Rainy"
-msgstr ""
+msgstr "Блоки і дощовий"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Blur"
-msgstr ""
+msgstr "Замилювання"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
@@ -435,34 +502,35 @@ msgstr "Жирний"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Border Color"
-msgstr ""
+msgstr "Колір межі"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Border Style"
-msgstr ""
+msgstr "Стиль межі"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Border Width"
-msgstr ""
+msgstr "Ширина межі"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Brannan"
-msgstr ""
+msgstr "Браннан"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Brightness"
-msgstr ""
+msgstr "Яскравість"
 
 #. module: web_editor
 #. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
 #: code:addons/web_editor/static/src/xml/snippets.xml:0
 #: code:addons/web_editor/static/src/xml/snippets.xml:0
 #, python-format
@@ -503,7 +571,7 @@ msgstr "Змініть опис відомостей про медіа та пі
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 #, python-format
 msgid "Choose a record..."
-msgstr ""
+msgstr "Оберіть запис..."
 
 #. module: web_editor
 #. openerp-web
@@ -516,6 +584,7 @@ msgstr "Закрити"
 
 #. module: web_editor
 #. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Code"
@@ -562,9 +631,16 @@ msgid "Confirmation"
 msgstr "Підтвердження"
 
 #. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#, python-format
+msgid "Content conflict"
+msgstr "Конфлікт вмісту"
+
+#. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Contrast"
-msgstr ""
+msgstr "Контраст"
 
 #. module: web_editor
 #. openerp-web
@@ -585,7 +661,7 @@ msgstr "Скопіюйте та вставте вашу URL-адресу або 
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Could not install module <strong>%s</strong>"
-msgstr ""
+msgstr "Неможливо встановити модуль <strong>%s</strong>"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
@@ -620,6 +696,7 @@ msgstr "Обрізати зображення"
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/wysiwyg/widgets/link.js:0
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 #: model_terms:ir.ui.view,arch_db:web_editor.snippets
 #, python-format
@@ -631,7 +708,7 @@ msgstr "Кастомний"
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 #, python-format
 msgid "Custom %s"
-msgstr ""
+msgstr "Кастомний %s"
 
 #. module: web_editor
 #. openerp-web
@@ -662,21 +739,26 @@ msgstr "За замовчуванням"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Default + Rounded"
-msgstr ""
+msgstr "Типовий + округлений"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "Define a custom gradient"
+msgstr "Визначіть кастомний градієнт"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Delete %s"
-msgstr ""
+msgstr "Видалити %s"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Delete current table"
-msgstr ""
+msgstr "Видалити поточну таблицю"
 
 #. module: web_editor
 #. openerp-web
@@ -701,7 +783,7 @@ msgstr "Відмінити"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippets
 msgid "Discard record"
-msgstr ""
+msgstr "Вилучити записи"
 
 #. module: web_editor
 #: model:ir.model.fields,field_description:web_editor.field_web_editor_converter_test_sub__display_name
@@ -713,7 +795,7 @@ msgstr "Відобразити назву"
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Do you want to install the %s App?"
-msgstr ""
+msgstr "Ви хочете встановити модуль %s?"
 
 #. module: web_editor
 #. openerp-web
@@ -754,37 +836,39 @@ msgstr "Дублювати контейнер"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Dynamic Colors"
-msgstr ""
+msgstr "Динамічні кольори"
 
 #. module: web_editor
 #: code:addons/web_editor/controllers/main.py:0
 #, python-format
 msgid "ERROR: couldn't get download urls from media library."
 msgstr ""
+"Помилка: неможливо отримати url-адреси для завантаження з бібліотеки "
+"зображень."
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "EarlyBird"
-msgstr ""
+msgstr "EarlyBird"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Edit Link"
-msgstr ""
+msgstr "Редагувати посилання"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "Edit image"
-msgstr ""
+msgstr "Редагувати зображення"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Edit media description"
-msgstr ""
+msgstr "Редагувати опис медіа"
 
 #. module: web_editor
 #. openerp-web
@@ -794,6 +878,9 @@ msgid ""
 "Editing a built-in file through this editor is not advised, as it will "
 "prevent it from being updated during future App upgrades."
 msgstr ""
+"Редагувати вбудований файл за допомогою цього редактора не рекомендується, "
+"оскільки це може запобігти його оновленню під час майбутніх оновлень "
+"програми."
 
 #. module: web_editor
 #. openerp-web
@@ -803,18 +890,38 @@ msgid "Expected "
 msgstr "Очікуються"
 
 #. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "Extend to the closest corner"
+msgstr "Протягніть до найближчого кута"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "Extend to the closest side"
+msgstr "Протягніть до найближчої сторони"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "Extend to the farthest corner"
+msgstr "Протягніть до найдальшого кута"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "Extend to the farthest side"
+msgstr "Протягніть до найдальшої сторони"
+
+#. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "File could not be saved"
-msgstr ""
+msgstr "Файл неможливо зберегти"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "File has been uploaded"
-msgstr ""
+msgstr "Файл завантажено"
 
 #. module: web_editor
 #. openerp-web
@@ -830,7 +937,7 @@ msgstr "Заповнити"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Fill + Rounded"
-msgstr ""
+msgstr "Заповнено + Округлено"
 
 #. module: web_editor
 #. openerp-web
@@ -844,7 +951,7 @@ msgstr "Фільтр"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippets
 msgid "First Panel"
-msgstr ""
+msgstr "Перша панель"
 
 #. module: web_editor
 #. openerp-web
@@ -878,12 +985,12 @@ msgstr "Перевернути вертикально"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "Floating shapes"
-msgstr ""
+msgstr "Плаваючі фігури"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Floats"
-msgstr ""
+msgstr "Плаває"
 
 #. module: web_editor
 #. openerp-web
@@ -898,6 +1005,13 @@ msgstr "Колір шрифту"
 #, python-format
 msgid "Font size"
 msgstr "Розмір шрифту"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
+#, python-format
+msgid "For technical reasons, this block cannot be dropped here"
+msgstr "З технічних причин цей блок не можна опустити сюди"
 
 #. module: web_editor
 #. openerp-web
@@ -921,13 +1035,16 @@ msgid ""
 "Get the perfect image by searching in our library of copyright free photos "
 "and illustrations."
 msgstr ""
+"Отримайте ідеальне зображення через пошук у нашій бібліотеці безкоштовних "
+"фото та ілюстрацій."
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/snippets.xml:0
+#: code:addons/web_editor/static/src/xml/snippets.xml:0
 #, python-format
 msgid "Gradient"
-msgstr ""
+msgstr "Градієнт"
 
 #. module: web_editor
 #: model:ir.model,name:web_editor.model_ir_http
@@ -987,13 +1104,6 @@ msgstr "Сховати логотип Dailymotion"
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
-msgid "Hide Youtube logo"
-msgstr "Сховати логотип Youtube"
-
-#. module: web_editor
-#. openerp-web
-#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
-#, python-format
 msgid "Hide fullscreen button"
 msgstr "Приховати повноекранну кнопку"
 
@@ -1035,42 +1145,42 @@ msgstr "Значок"
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Icon Formatting"
-msgstr ""
+msgstr "Форматування іконки"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Icon size 1x"
-msgstr ""
+msgstr "Розмір іконки 1x"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Icon size 2x"
-msgstr ""
+msgstr "Розмір іконки 2x"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Icon size 3x"
-msgstr ""
+msgstr "Розмір іконки 3x"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Icon size 4x"
-msgstr ""
+msgstr "Розмір іконки 4x"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Icon size 5x"
-msgstr ""
+msgstr "Розмір іконки 5x"
 
 #. module: web_editor
 #. openerp-web
@@ -1080,6 +1190,8 @@ msgid ""
 "If you discard the current edits, all unsaved changes will be lost. You can "
 "cancel to return to edit mode."
 msgstr ""
+"Якщо відкинути поточні зміни, усі незбережені зміни буде втрачено. Ви можете"
+" скасувати, щоби повернутися до режиму редагування."
 
 #. module: web_editor
 #. openerp-web
@@ -1097,11 +1209,12 @@ msgstr ""
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Illustrations"
-msgstr ""
+msgstr "Ілюстрації"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 #, python-format
@@ -1113,7 +1226,7 @@ msgstr "Зображення"
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Image Formatting"
-msgstr ""
+msgstr "Форматування зображення"
 
 #. module: web_editor
 #: model:ir.model.fields,field_description:web_editor.field_ir_attachment__image_height
@@ -1135,40 +1248,54 @@ msgstr "Ширина зображення"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Image padding"
-msgstr ""
+msgstr "Заповнення зображення"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Inkwell"
-msgstr ""
+msgstr "Чорнильниця"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Inline Text"
-msgstr ""
+msgstr "Вбудований текст"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#, python-format
+msgid "Insert a video."
+msgstr "Вставте відео."
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#, python-format
+msgid "Insert an image."
+msgstr "Вставте зображення."
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Insert media"
-msgstr ""
+msgstr "Вставте медіа"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Insert or edit link"
-msgstr ""
+msgstr "Вставте або відредагуйте посилання"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Insert table"
-msgstr ""
+msgstr "Вставити таблицю"
 
 #. module: web_editor
 #. openerp-web
@@ -1182,28 +1309,34 @@ msgstr "Встановити"
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Install %s"
-msgstr ""
+msgstr "Встановити %s"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Install in progress"
-msgstr ""
+msgstr "Виконується встановлення"
+
+#. module: web_editor
+#: code:addons/web_editor/models/ir_ui_view.py:0
+#, python-format
+msgid "Invalid field value for %s: %s"
+msgstr "Недійсне значення поля для %s: %s"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Invisible Elements"
-msgstr ""
+msgstr "Невидимі елементи"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 #, python-format
 msgid "Item"
-msgstr ""
+msgstr "Елемент"
 
 #. module: web_editor
 #. openerp-web
@@ -1252,6 +1385,11 @@ msgid "Left"
 msgstr "Лівий"
 
 #. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "Linear"
+msgstr "Лінійно"
+
+#. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Lines"
 msgstr "Рядки"
@@ -1259,6 +1397,7 @@ msgstr "Рядки"
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/wysiwyg/widgets/link.js:0
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
 #, python-format
 msgid "Link"
 msgstr "Посилання"
@@ -1275,7 +1414,7 @@ msgstr "Текст посилання"
 #: code:addons/web_editor/static/src/js/wysiwyg/widgets/link_popover_widget.js:0
 #, python-format
 msgid "Link copied to clipboard."
-msgstr ""
+msgstr "Посилання скопійовано в буфер обміну."
 
 #. module: web_editor
 #. openerp-web
@@ -1301,16 +1440,24 @@ msgstr "Цикл"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "Main Color"
-msgstr ""
+msgstr "Основний колір"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Maven"
-msgstr ""
+msgstr "Maven"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Media"
+msgstr "Медіа"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#, python-format
+msgid "Medias"
 msgstr "Медіа"
 
 #. module: web_editor
@@ -1328,14 +1475,14 @@ msgstr "Канал"
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "More info about this app."
-msgstr ""
+msgstr "Більше інформації про цей модуль."
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "My Images"
-msgstr ""
+msgstr "Мої зображення"
 
 #. module: web_editor
 #: model:ir.model.fields,field_description:web_editor.field_web_editor_converter_test_sub__name
@@ -1344,10 +1491,25 @@ msgstr "Назва"
 
 #. module: web_editor
 #. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#, python-format
+msgid "Navigation"
+msgstr "Навігація"
+
+#. module: web_editor
+#. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "No"
 msgstr "Ні"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/widgets/link_popover_widget.js:0
+#, python-format
+msgid "No URL specified"
+msgstr "URL-адреса не вказана"
 
 #. module: web_editor
 #. openerp-web
@@ -1368,14 +1530,21 @@ msgstr "Зображень не знайдено."
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "No location to drop in"
-msgstr ""
+msgstr "Немає місця, куди можна вставити"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 #, python-format
 msgid "No more records"
-msgstr ""
+msgstr "Більше немає записів"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
+msgid "No pictograms found."
+msgstr "Не знайдено жодної піктограми."
 
 #. module: web_editor
 #. openerp-web
@@ -1423,7 +1592,7 @@ msgstr "Лише перегляди"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Open in a new tab"
-msgstr ""
+msgstr "Відкрити у новій вкладці"
 
 #. module: web_editor
 #. openerp-web
@@ -1437,7 +1606,7 @@ msgstr "Відкрити в новому вікні"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Optimized"
-msgstr ""
+msgstr "Оптимізовано"
 
 #. module: web_editor
 #: model:ir.model.fields,field_description:web_editor.field_ir_attachment__original_id
@@ -1447,7 +1616,7 @@ msgstr "Оригінальне (не оптимізоване, незмінен�
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "Origins"
-msgstr ""
+msgstr "Походження"
 
 #. module: web_editor
 #. openerp-web
@@ -1463,7 +1632,7 @@ msgstr "Контур"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Outline + Rounded"
-msgstr ""
+msgstr "Контур + закруглення"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
@@ -1473,7 +1642,7 @@ msgstr "Поля елементу"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Patterns"
-msgstr ""
+msgstr "Візернуки"
 
 #. module: web_editor
 #. openerp-web
@@ -1481,6 +1650,18 @@ msgstr ""
 #, python-format
 msgid "Pictogram"
 msgstr "Піктограма"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "Position"
+msgstr "Вакансія"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/snippets.xml:0
+#, python-format
+msgid "Preset #{number}"
+msgstr ""
 
 #. module: web_editor
 #. openerp-web
@@ -1502,17 +1683,17 @@ msgstr "Основний"
 #. module: web_editor
 #: model:ir.model.fields.selection,name:web_editor.selection__web_editor_converter_test__selection_str__c
 msgid "Qu'est-ce qu'il fout ce maudit pancake, tabernacle ?"
-msgstr ""
+msgstr "Qu'est-ce qu'il fout ce maudit pancake, tabernacle ?"
 
 #. module: web_editor
 #: model:ir.model.fields.selection,name:web_editor.selection__web_editor_converter_test__selection_str__a
 msgid "Qu'il n'est pas arrivé à Toronto"
-msgstr ""
+msgstr "Qu'il n'est pas arrivé à Toronto"
 
 #. module: web_editor
 #: model:ir.model.fields.selection,name:web_editor.selection__web_editor_converter_test__selection_str__b
 msgid "Qu'il était supposé arriver à Toronto"
-msgstr ""
+msgstr "Qu'il était supposé arriver à Toronto"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
@@ -1521,6 +1702,7 @@ msgstr "Якість"
 
 #. module: web_editor
 #. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Quote"
@@ -1607,6 +1789,11 @@ msgid "Qweb Field qweb"
 msgstr "Qweb поле qweb"
 
 #. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "Radial"
+msgstr "Радіальний"
+
+#. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
 #, python-format
@@ -1615,10 +1802,17 @@ msgstr "Поле тільки для читання"
 
 #. module: web_editor
 #. openerp-web
+#: code:addons/web_editor/static/src/xml/image_link_tools.xml:0
+#, python-format
+msgid "Redirect the user elsewhere when he clicks on the media."
+msgstr "Переспрямування користувача в інше місце, коли він натискає на медіа."
+
+#. module: web_editor
+#. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Remove (DELETE)"
-msgstr ""
+msgstr "Вилучити (ВИДАЛИТИ)"
 
 #. module: web_editor
 #. openerp-web
@@ -1633,54 +1827,59 @@ msgstr "Вилучити блок"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Remove Current"
-msgstr ""
+msgstr "Вилучити поточний"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Remove Link"
-msgstr ""
+msgstr "Вилучити посилання"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+msgid "Remove Selected Color"
+msgstr "Вилучити вибраний колір"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Remove current column"
-msgstr ""
+msgstr "Вилучити поточну колонку"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Remove current row"
-msgstr ""
+msgstr "Вилучити поточний рядок"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Remove format"
-msgstr ""
+msgstr "Вилучити формат"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Remove link"
-msgstr ""
+msgstr "Вилучити посилання"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Rename %s"
-msgstr ""
+msgstr "Перейменувати %s"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "Repeat pattern"
-msgstr ""
+msgstr "Повторіть візерунок"
 
 #. module: web_editor
 #. openerp-web
@@ -1696,7 +1895,7 @@ msgstr "Замінити"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Replace media"
-msgstr ""
+msgstr "Змінити медіа"
 
 #. module: web_editor
 #. openerp-web
@@ -1718,12 +1917,12 @@ msgstr "Скинути зображення"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Reset crop"
-msgstr ""
+msgstr "Скинути обрізання"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Reset transformation"
-msgstr ""
+msgstr "Скинути зміни"
 
 #. module: web_editor
 #. openerp-web
@@ -1738,7 +1937,7 @@ msgstr "Скидання переглядів ще не підтримуєтьс
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 #, python-format
 msgid "Resize Auto"
-msgstr ""
+msgstr "Автозміна розміру"
 
 #. module: web_editor
 #. openerp-web
@@ -1791,7 +1990,7 @@ msgstr "Повернути праворуч"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Row"
-msgstr ""
+msgstr "Рядок"
 
 #. module: web_editor
 #. openerp-web
@@ -1810,7 +2009,7 @@ msgstr "Файл SCSS: %s"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Saturation"
-msgstr ""
+msgstr "Насичення"
 
 #. module: web_editor
 #. openerp-web
@@ -1826,7 +2025,7 @@ msgstr "Зберегти"
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Save and Install"
-msgstr ""
+msgstr "Зберегти та встановити"
 
 #. module: web_editor
 #. openerp-web
@@ -1834,12 +2033,12 @@ msgstr ""
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 #, python-format
 msgid "Save and Reload"
-msgstr ""
+msgstr "Зберегти та перезавантажити"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippets
 msgid "Save record"
-msgstr ""
+msgstr "Зберегти запис"
 
 #. module: web_editor
 #. openerp-web
@@ -1875,7 +2074,7 @@ msgstr "Пошук зображення"
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 #, python-format
 msgid "Search for records..."
-msgstr ""
+msgstr "Пошук записів..."
 
 #. module: web_editor
 #. openerp-web
@@ -1889,7 +2088,7 @@ msgstr "Шукати більше..."
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 #, python-format
 msgid "Search to show more records"
-msgstr ""
+msgstr "Шукати, щоби показати більше записів"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippets
@@ -1915,12 +2114,12 @@ msgstr "Вибрати медіа"
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Select a block on your page to style it."
-msgstr ""
+msgstr "Оберіть блок на вашій сторінці, щоби стилізувати її."
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Sepia"
-msgstr ""
+msgstr "Сепія"
 
 #. module: web_editor
 #. openerp-web
@@ -1972,12 +2171,13 @@ msgstr "Форма: ескіз"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Show optimized images"
-msgstr ""
+msgstr "Показати оптимізовані зображення"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 #, python-format
 msgid "Size"
@@ -1986,27 +2186,27 @@ msgstr "Розмір"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Size 1x"
-msgstr ""
+msgstr "Розмір 1x"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Size 2x"
-msgstr ""
+msgstr "Розмір 2x"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Size 3x"
-msgstr ""
+msgstr "Розмір 3x"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Size 4x"
-msgstr ""
+msgstr "Розмір 4x"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Size 5x"
-msgstr ""
+msgstr "Розмір 5x"
 
 #. module: web_editor
 #. openerp-web
@@ -2020,6 +2220,7 @@ msgstr "Малий"
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/snippets.xml:0
+#: code:addons/web_editor/static/src/xml/snippets.xml:0
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Solid"
@@ -2028,12 +2229,12 @@ msgstr "Суцільний"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Solids"
-msgstr ""
+msgstr "Заливки"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Specials"
-msgstr ""
+msgstr "Спеціальні"
 
 #. module: web_editor
 #. openerp-web
@@ -2048,21 +2249,21 @@ msgstr "Стиль"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Suggestions"
-msgstr ""
+msgstr "Пропозиції"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Table Options"
-msgstr ""
+msgstr "Параметри таблиці"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Table tools"
-msgstr ""
+msgstr "Інструменти таблиці"
 
 #. module: web_editor
 #. openerp-web
@@ -2083,14 +2284,14 @@ msgstr "Текст"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Text align"
-msgstr ""
+msgstr "Вирівнювання тексту"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Text style"
-msgstr ""
+msgstr "Стиль тексту"
 
 #. module: web_editor
 #. openerp-web
@@ -2105,6 +2306,16 @@ msgstr "Здається, URL не працює."
 #, python-format
 msgid "The URL seems valid."
 msgstr "Здається URL дійсна."
+
+#. module: web_editor
+#: code:addons/web_editor/controllers/main.py:0
+#, python-format
+msgid ""
+"The document was already saved from someone with a different history for "
+"model %r, field %r with id %r."
+msgstr ""
+"Документ уже збережено від когось із іншою історією моделі, поле з "
+"ідентифікатором."
 
 #. module: web_editor
 #. openerp-web
@@ -2134,6 +2345,18 @@ msgstr "Надана URL-адреса недійсна"
 
 #. module: web_editor
 #. openerp-web
+#: code:addons/web_editor/static/src/xml/editor.xml:0
+#, python-format
+msgid ""
+"The version from the database will be used.\n"
+"                    If you need to keep your changes, copy the content below and edit the new document."
+msgstr ""
+"Буде використана версія з бази даних.\n"
+"                    Якщо вам потрібно зберегти зміни, скопіюйте наведений нижче вміст і відредагуйте новий документ."
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/snippets.xml:0
 #: code:addons/web_editor/static/src/xml/snippets.xml:0
 #, python-format
 msgid "Theme"
@@ -2148,17 +2371,31 @@ msgstr "Кольори теми"
 
 #. module: web_editor
 #. openerp-web
+#: code:addons/web_editor/static/src/xml/editor.xml:0
+#, python-format
+msgid "There is a conflict between your version and the one in the database."
+msgstr "Існує конфлікт між вашою версією та версією в базі даних."
+
+#. module: web_editor
+#. openerp-web
 #: code:addons/web_editor/static/src/js/wysiwyg/widgets/link_popover_widget.js:0
 #, python-format
 msgid "This URL is invalid. Preview couldn't be updated."
-msgstr ""
+msgstr "Ця URL-адреса недійсна. Не вдалося оновити попередній перегляд."
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/snippets.xml:0
 #, python-format
 msgid "This block is outdated"
-msgstr ""
+msgstr "Цей блок застарів"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
+#, python-format
+msgid "This document is not saved!"
+msgstr "Цей документ не збережено!"
 
 #. module: web_editor
 #. openerp-web
@@ -2189,6 +2426,9 @@ msgid ""
 "This type of image is not supported for cropping.<br/>If you want to crop "
 "it, please first download it from the original source and upload it in Odoo."
 msgstr ""
+"Цей тип зображення не підтримується для обрізання.<br/>Якщо ви хочете "
+"обрізати його, спершу завантажте з оригінального джерела та завантажте його "
+"в Odoo."
 
 #. module: web_editor
 #. openerp-web
@@ -2200,7 +2440,7 @@ msgstr "Звертання"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Title tag"
-msgstr ""
+msgstr "Тег заголовку"
 
 #. module: web_editor
 #. openerp-web
@@ -2210,6 +2450,8 @@ msgid ""
 "To apply this change, we need to save all your previous modifications and "
 "reload the page."
 msgstr ""
+"Щоб застосувати цю зміну, нам потрібно зберегти всі ваші попередні зміни та "
+"перезавантажити сторінку."
 
 #. module: web_editor
 #. openerp-web
@@ -2219,6 +2461,8 @@ msgid ""
 "To make changes, drop this block and use the new options in the last "
 "version."
 msgstr ""
+"Щоб внести зміни, скиньте цей блок і скористайтеся новими параметрами в "
+"останній версії."
 
 #. module: web_editor
 #. openerp-web
@@ -2228,39 +2472,41 @@ msgid ""
 "To save a snippet, we need to save all your previous modifications and "
 "reload the page."
 msgstr ""
+"Щоб зберегти сніпет, нам потрібно зберегти всі ваші попередні зміни та "
+"перезавантажити сторінку."
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Toaster"
-msgstr ""
+msgstr "Тостер"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Toggle bold"
-msgstr ""
+msgstr "Увімкнути жирний"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Toggle checklist"
-msgstr ""
+msgstr "Увімкнути чекліст"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Toggle icon spin"
-msgstr ""
+msgstr "Увімкнути обертання іконки"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "Toggle italic"
-msgstr ""
+msgstr "Увімкнути курсив"
 
 #. module: web_editor
 #. openerp-web
@@ -2273,8 +2519,15 @@ msgstr "Перемкнути впорядкований список"
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
+msgid "Toggle strikethrough"
+msgstr "Переключити закреслення"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/editor.xml:0
+#, python-format
 msgid "Toggle underline"
-msgstr ""
+msgstr "Увімкнути підкреслення"
 
 #. module: web_editor
 #. openerp-web
@@ -2294,12 +2547,12 @@ msgstr "Підказка"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Transform"
-msgstr ""
+msgstr "Трансформувати"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Transform the picture"
-msgstr ""
+msgstr "Трансформувати зображення"
 
 #. module: web_editor
 #. openerp-web
@@ -2332,6 +2585,14 @@ msgstr "Прозорі кольори"
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
+msgid "Try searching with other keywords."
+msgstr "Спробуйте пошук з іншими ключовими словами."
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
+#, python-format
 msgid "Type"
 msgstr "Тип"
 
@@ -2345,7 +2606,7 @@ msgstr "URL або Email"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Unalign"
-msgstr ""
+msgstr "Нерівний"
 
 #. module: web_editor
 #. openerp-web
@@ -2373,22 +2634,23 @@ msgstr "Завантажте зображення"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Uploaded image's format is not supported. Try with:"
-msgstr ""
+msgstr "Формат завантаженого зображення не підтримується. Спробуйте з:"
 
 #. module: web_editor
 #: code:addons/web_editor/controllers/main.py:0
 #, python-format
 msgid "Uploaded image's format is not supported. Try with: %s"
-msgstr ""
+msgstr "Формат завантаженого зображення не підтримується. Спробуйте з: %s"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Valencia"
-msgstr ""
+msgstr "Valencia"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
+#: code:addons/web_editor/static/src/js/wysiwyg/wysiwyg.js:0
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Video"
@@ -2399,7 +2661,7 @@ msgstr "Відео"
 #: code:addons/web_editor/static/src/js/editor/snippets.editor.js:0
 #, python-format
 msgid "Video Formatting"
-msgstr ""
+msgstr "Форматування відео"
 
 #. module: web_editor
 #. openerp-web
@@ -2437,12 +2699,23 @@ msgstr "Vimeo"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Walden"
+msgstr "Walden"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/editor.xml:0
+#, python-format
+msgid ""
+"Warning: after closing this dialog, the version you were working on will be "
+"discarded and will never be available anymore."
 msgstr ""
+"Попередження: після закриття цього діалогового вікна версія, над якою ви "
+"працювали, буде відхилена і більше не буде доступна."
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "Wavy"
-msgstr ""
+msgstr "Хвилястий"
 
 #. module: web_editor
 #: model:ir.model,name:web_editor.model_web_editor_converter_test_sub
@@ -2478,7 +2751,7 @@ msgstr "XML (HTML)"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Xpro"
-msgstr ""
+msgstr "Xpro"
 
 #. module: web_editor
 #. openerp-web
@@ -2527,7 +2800,7 @@ msgstr "Youku"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "Your URL"
-msgstr ""
+msgstr "Ваша URL"
 
 #. module: web_editor
 #. openerp-web
@@ -2559,6 +2832,13 @@ msgstr "додати"
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
+msgid "all"
+msgstr "всі"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
 msgid "and"
 msgstr "і"
 
@@ -2570,6 +2850,13 @@ msgstr "автоматично"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "darken"
+msgstr "темніти"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
+msgid "database"
 msgstr ""
 
 #. module: web_editor
@@ -2577,11 +2864,32 @@ msgstr ""
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #, python-format
 msgid "default"
-msgstr ""
+msgstr "за замовчуванням"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "exclusion"
+msgstr "виключення"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
+msgid "fill"
+msgstr ""
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
+msgid "fill,rounded-circle"
+msgstr ""
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
+msgid "flat"
 msgstr ""
 
 #. module: web_editor
@@ -2599,19 +2907,47 @@ msgid "https://www.odoo.com/mydocument"
 msgstr "https://www.odoo.com/mydocument"
 
 #. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
+msgid "lg"
+msgstr ""
+
+#. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "lighten"
+msgstr "світліший"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
+msgid "media-library"
 msgstr ""
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "multiply"
+msgstr "множення"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
+msgid "outline"
+msgstr ""
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
+msgid "outline,rounded-circle"
 msgstr ""
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "overlay"
-msgstr ""
+msgstr "накладення"
 
 #. module: web_editor
 #. openerp-web
@@ -2621,8 +2957,22 @@ msgid "px"
 msgstr "px"
 
 #. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
+msgid "rounded-circle"
+msgstr ""
+
+#. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "screen"
+msgstr "екран"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
+#, python-format
+msgid "sm"
 msgstr ""
 
 #. module: web_editor
@@ -2634,22 +2984,29 @@ msgstr "відео"
 
 #. module: web_editor
 #. openerp-web
+#: code:addons/web_editor/static/src/xml/image_link_tools.xml:0
+#, python-format
+msgid "www.example.com"
+msgstr "www.example.com"
+
+#. module: web_editor
+#. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "⌙ Autoconvert to relative link"
-msgstr ""
+msgstr "⌙ Автоперетворення у пов'язане посилання"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "⌙ Border"
-msgstr ""
+msgstr "⌙ Рамка"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "⌙ Color filter"
-msgstr ""
+msgstr "⌙ Фільтр кольору"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
@@ -2662,12 +3019,12 @@ msgstr "⌙ Кольори"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "⌙ Fill Color"
-msgstr ""
+msgstr "⌙ Колір заливки"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "⌙ Flip"
-msgstr ""
+msgstr "⌙ Перевернути"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
@@ -2677,31 +3034,32 @@ msgstr "⌙ Висота"
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "⌙ Image"
-msgstr ""
+msgstr "⌙ Зображення"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "⌙ Link Label"
-msgstr ""
+msgstr "⌙ Мітка посилання"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "⌙ Main Color"
-msgstr ""
+msgstr "⌙ Основний колір"
 
 #. module: web_editor
 #. openerp-web
+#: code:addons/web_editor/static/src/xml/image_link_tools.xml:0
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "⌙ Open in new window"
-msgstr ""
+msgstr "⌙ Відкрити у новому вікні"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "⌙ Position"
-msgstr ""
+msgstr "⌙ Розташування"
 
 #. module: web_editor
 #. openerp-web
@@ -2709,14 +3067,14 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 #, python-format
 msgid "⌙ Shape"
-msgstr ""
+msgstr "⌙ Форма"
 
 #. module: web_editor
 #. openerp-web
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "⌙ Size"
-msgstr ""
+msgstr "⌙ Розмір"
 
 #. module: web_editor
 #. openerp-web
@@ -2730,9 +3088,16 @@ msgstr "⌙ Стиль"
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #, python-format
 msgid "⌙ Text Color"
-msgstr ""
+msgstr "⌙ Колір тексту"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "⌙ Width"
 msgstr "⌙ Ширина"
+
+#. module: web_editor
+#. openerp-web
+#: code:addons/web_editor/static/src/xml/image_link_tools.xml:0
+#, python-format
+msgid "⌙ Your URL"
+msgstr "⌙ Ваша URL"

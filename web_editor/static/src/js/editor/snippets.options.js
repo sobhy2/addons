@@ -7,6 +7,7 @@ const Dialog = require('web.Dialog');
 const {scrollTo} = require('web.dom');
 const rpc = require('web.rpc');
 const time = require('web.time');
+const utils = require('web.utils');
 var Widget = require('web.Widget');
 var ColorPaletteWidget = require('web_editor.ColorPalette').ColorPaletteWidget;
 const weUtils = require('web_editor.utils');
@@ -16,6 +17,7 @@ const {
     backgroundImageCssToParts,
     backgroundImagePartsToCss,
     DEFAULT_PALETTE,
+    isBackgroundImageAttribute,
 } = weUtils;
 var weWidgets = require('wysiwyg.widgets');
 const {
@@ -24,10 +26,14 @@ const {
     applyModifications,
     removeOnImageChangeAttrs,
     isImageSupportedForProcessing,
+    isImageSupportedForStyle,
 } = require('web_editor.image_processing');
+const OdooEditorLib = require('@web_editor/../lib/odoo-editor/src/OdooEditor');
 
 var qweb = core.qweb;
 var _t = core._t;
+const preserveCursor = OdooEditorLib.preserveCursor;
+const descendants = OdooEditorLib.descendants;
 
 /**
  * @param {HTMLElement} el
@@ -80,7 +86,16 @@ function _buildElement(tagName, title, options) {
  */
 function _buildTitleElement(title) {
     const titleEl = document.createElement('we-title');
-    titleEl.textContent = title;
+    // As a stable fix, to not touch XML templates and break existing
+    // translations, the ⌙ character is automatically replaced by └ which makes
+    // more sense for the usecase and should work properly in all browsers. The
+    // ⌙ character is actually rendered mirrored on Windows 11 Chrome (and
+    // others) as the font used for those unicode characters is left to the
+    // browser. We could force a font of our own but it's probably not worth it.
+    // TODO a better solution with a SVG or CSS solution has to be done in
+    // master. That would unify the look of the symbol across all browsers and
+    // also prevent special characters to be placed in translations.
+    titleEl.textContent = title.replace(/⌙/g, '└');
     return titleEl;
 }
 /**
@@ -154,6 +169,9 @@ function _buildCollapseElement(title, options) {
 
     const togglerEl = document.createElement('we-toggler');
     togglerEl.classList.add('o_we_collapse_toggler');
+    if (_t.database.parameters.direction === 'rtl') {
+        togglerEl.classList.add('o_we_collapse_toggler_rtl');
+    }
     groupEl.appendChild(togglerEl);
 
     const containerEl = document.createElement('div');
@@ -246,7 +264,6 @@ const UserValueWidget = Widget.extend({
         this.containerEl = document.createElement('div');
 
         if (this.imgEl) {
-            this.containerEl.appendChild(document.createTextNode('\u200B')); // Ensures proper vertical centering.
             this.containerEl.appendChild(this.imgEl);
         }
 
@@ -300,6 +317,16 @@ const UserValueWidget = Widget.extend({
             // and just be ignored.
             return;
         }
+        if (!this.el.classList.contains('o_we_widget_opened')) {
+            // Small optimization: it would normally not matter asking to
+            // remove a class of an element if it does not already have it but
+            // in this case we do more: we trigger_up an event and ask to close
+            // all sub widgets. When we ask the editor to close all widgets...
+            // it makes sense not letting every sub button of every select
+            // trigger_up an event. This allows to avoid tens of thousands of
+            // instructions being done at each click in the editor.
+            return;
+        }
         this.trigger_up('user_value_widget_closing');
         this.el.classList.remove('o_we_widget_opened');
         this._userValueWidgets.forEach(widget => widget.close());
@@ -325,6 +352,15 @@ const UserValueWidget = Widget.extend({
             }
         }
         return null;
+    },
+    /**
+     * Focus the main focusable element of the widget.
+     */
+    focus() {
+        const el = this._getFocusableElement();
+        if (el) {
+            el.focus();
+        }
     },
     /**
      * Returns the value that the widget would hold if it was active, by default
@@ -497,12 +533,6 @@ const UserValueWidget = Widget.extend({
      * @param {boolean} [isSimulatedEvent=false]
      */
     notifyValueChange: function (previewMode, isSimulatedEvent) {
-        // If the widget has no associated method, it should not notify user
-        // value changes
-        if (!this._methodsNames.length) {
-            console.warn('UserValueWidget with no methods notifying value change');
-        }
-
         // In the case we notify a change update, force a preview update if it
         // was not already previewed
         const isPreviewed = this.isPreviewed();
@@ -569,13 +599,32 @@ const UserValueWidget = Widget.extend({
      * @param {boolean} show
      */
     toggleVisibility: function (show) {
+        let doFocus = false;
+        if (show) {
+            const wasInvisible = this.el.classList.contains('d-none');
+            doFocus = wasInvisible && this.el.dataset.requestFocus === "true";
+        }
         this.el.classList.toggle('d-none', !show);
+        if (doFocus) {
+            this.focus();
+        }
     },
 
     //--------------------------------------------------------------------------
     // Private
     //--------------------------------------------------------------------------
 
+    /**
+     * Returns the main focusable element of the widget. By default supposes
+     * nothing is focusable.
+     *
+     * @todo review all specific widget's method
+     * @private
+     * @returns {HTMLElement}
+     */
+    _getFocusableElement: function () {
+        return null;
+    },
     /**
      * @private
      * @param {OdooEvent|Event}
@@ -668,16 +717,6 @@ const ButtonUserValueWidget = UserValueWidget.extend({
     /**
      * @override
      */
-    start: function (parent, title, options) {
-        if (this.options && this.options.childNodes) {
-            this.options.childNodes.forEach(node => this.containerEl.appendChild(node));
-        }
-
-        return this._super(...arguments);
-    },
-    /**
-     * @override
-     */
     async willStart() {
         await this._super(...arguments);
         if (this.options.dataAttributes.activeImg) {
@@ -689,10 +728,23 @@ const ButtonUserValueWidget = UserValueWidget.extend({
      */
     _makeDescriptive() {
         const $el = this._super(...arguments);
+        if (this.imgEl) {
+            $el[0].classList.add('o_we_icon_button');
+        }
         if (this.activeImgEl) {
             this.containerEl.appendChild(this.activeImgEl);
         }
         return $el;
+    },
+    /**
+     * @override
+     */
+    start: function (parent, title, options) {
+        if (this.options && this.options.childNodes) {
+            this.options.childNodes.forEach(node => this.containerEl.appendChild(node));
+        }
+
+        return this._super(...arguments);
     },
 
     //--------------------------------------------------------------------------
@@ -814,14 +866,7 @@ const BaseSelectionUserValueWidget = UserValueWidget.extend({
 
         this.menuEl = document.createElement('we-selection-items');
         if (this.options && this.options.childNodes) {
-            this.options.childNodes.forEach(node => {
-                if (node) {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        node.insertBefore(document.createTextNode('\u200B'), node.firstChild); // Ensures proper height.
-                    }
-                    this.menuEl.appendChild(node);
-                }
-            });
+            this.options.childNodes.forEach(node => node && this.menuEl.appendChild(node));
         }
         this.containerEl.appendChild(this.menuEl);
     },
@@ -904,13 +949,22 @@ const SelectUserValueWidget = BaseSelectionUserValueWidget.extend({
      */
     async start() {
         await this._super(...arguments);
+        if (!this.menuEl.children.length) {
+            // Remove empty text nodes so that :empty css rule can work
+            // TODO this has been added here as a fix to be extra careful. In
+            // master we should just avoid adding text nodes inside
+            // we-selection-items in the first place.
+            while (this.menuEl.firstChild
+                    && !this.menuEl.firstChild.data.trim().length) {
+                this.menuEl.firstChild.remove();
+            }
+        }
 
         if (this.options && this.options.valueEl) {
             this.containerEl.insertBefore(this.options.valueEl, this.menuEl);
         }
 
         this.menuTogglerEl = document.createElement('we-toggler');
-        this.menuTogglerEl.appendChild(document.createTextNode('\u200B')); // Ensures proper height.
         this.iconEl = this.imgEl || null;
         const icon = this.el.dataset.icon;
         if (icon) {
@@ -969,11 +1023,11 @@ const SelectUserValueWidget = BaseSelectionUserValueWidget.extend({
             this.menuTogglerItemEl = null;
         }
 
-        let textContent = '\u200B'; // Ensures proper height.
+        let textContent = '';
         const activeWidget = this._userValueWidgets.find(widget => !widget.isPreviewed() && widget.isActive());
         if (activeWidget) {
             const svgTag = activeWidget.el.querySelector('svg'); // useful to avoid searching text content in svg element
-            const value = (activeWidget.el.dataset.selectLabel || (!svgTag && activeWidget.el.textContent.replace('\u200B', '').trim()));
+            const value = (activeWidget.el.dataset.selectLabel || (!svgTag && activeWidget.el.textContent.trim()));
             const imgSrc = activeWidget.el.dataset.img;
             if (value) {
                 textContent = value;
@@ -1115,7 +1169,11 @@ const UnitUserValueWidget = UserValueWidget.extend({
         if (!params.unit) {
             return isSuperActive;
         }
-        return isSuperActive && this._floatToStr(parseFloat(this._value)) !== '0';
+        return isSuperActive && (
+            this._floatToStr(parseFloat(this._value)) !== '0'
+            // Or is a composite value.
+            || !!this._value.match(/\d+\s+\d+/)
+        );
     },
     /**
      * @override
@@ -1155,6 +1213,7 @@ const InputUserValueWidget = UnitUserValueWidget.extend({
     events: {
         'input input': '_onInputInput',
         'blur input': '_onInputBlur',
+        'change input': '_onUserValueChange',
         'keydown input': '_onInputKeydown',
     },
 
@@ -1191,6 +1250,18 @@ const InputUserValueWidget = UnitUserValueWidget.extend({
     async setValue() {
         await this._super(...arguments);
         this.inputEl.value = this._value;
+        this._oldValue = this._value;
+    },
+
+    //--------------------------------------------------------------------------
+    // Private
+    //--------------------------------------------------------------------------
+
+    /**
+     * @override
+     */
+    _getFocusableElement() {
+        return this.inputEl;
     },
 
     //--------------------------------------------------------------------------
@@ -1203,6 +1274,14 @@ const InputUserValueWidget = UnitUserValueWidget.extend({
      */
     _onInputInput: function (ev) {
         this._value = this.inputEl.value;
+        // When the value changes as a result of a arrow up/down, the change
+        // event is not called, unless a real user input has been triggered.
+        // This event handler holds a variable for this in order to not call
+        // `_onUserValueChange` two times. If the users only uses arrow up/down
+        // it will be trigger on blur otherwise it will be triggered on change.
+        if (!ev.detail || !ev.detail.keyUpOrDown) {
+            this.changeEventWillBeTriggered = true;
+        }
         this._onUserValuePreview(ev);
     },
     /**
@@ -1210,51 +1289,74 @@ const InputUserValueWidget = UnitUserValueWidget.extend({
      * @param {Event} ev
      */
     _onInputBlur: function (ev) {
-        // Sometimes, an input is focusout for internal reason (like an undo
-        // recording) then focused again manually in the same JS stack
-        // execution. In that case, the blur should not trigger an option
-        // selection as the user did not leave the input. We thus defer the blur
-        // handling to then check that the target is indeed still blurred before
-        // executing the actual option selection.
-        setTimeout(() => {
-            if (ev.currentTarget === document.activeElement) {
-                return;
-            }
+        if (this.notifyValueChangeOnBlur && !this.changeEventWillBeTriggered) {
+            // In case the input value has been modified with arrow up/down, the
+            // change event is not triggered (except if there has been a natural
+            // input event), so if the element doesn't trigger a preview, we
+            // have to notify that the value changes now.
             this._onUserValueChange(ev);
-        });
+            this.notifyValueChangeOnBlur = false;
+        }
+        this.changeEventWillBeTriggered = false;
     },
     /**
      * @private
      * @param {Event} ev
      */
     _onInputKeydown: function (ev) {
+        const params = this._methodsParams;
+        if (!params.unit && !params.step) {
+            return;
+        }
         switch (ev.which) {
-            case $.ui.keyCode.ENTER: {
+            case $.ui.keyCode.ENTER:
                 this._onUserValueChange(ev);
                 break;
-            }
             case $.ui.keyCode.UP:
             case $.ui.keyCode.DOWN: {
                 const input = ev.currentTarget;
-                const params = this._methodsParams;
-                if (!params.unit && !params.step) {
-                    break;
+                let parts = (input.value || input.placeholder).match(/-?\d+\.\d+|-?\d+/g);
+                if (!parts) {
+                    parts = [input.value || input.placeholder];
                 }
-                let value = parseFloat(input.value || input.placeholder);
-                if (isNaN(value)) {
-                    value = 0.0;
-                }
-                let step = parseFloat(params.step);
-                if (isNaN(step)) {
-                    step = 1.0;
-                }
-                value += (ev.which === $.ui.keyCode.UP ? step : -step);
-                input.value = this._floatToStr(value);
-                $(input).trigger('input');
+                input.value = parts.map(part => {
+                    let value = parseFloat(part);
+                    if (isNaN(value)) {
+                        value = 0.0;
+                    }
+                    let step = parseFloat(params.step);
+                    if (isNaN(step)) {
+                        step = 1.0;
+                    }
+                    value += (ev.which === $.ui.keyCode.UP ? step : -step);
+                    if (parts.length > 1 && value < 0) {
+                        // No negative for composite values.
+                        value = 0.0;
+                    }
+                    return this._floatToStr(value);
+                }).join(" ");
+                // We need to know if the change event will be triggered or not.
+                // Change is triggered if there has been a "natural" input event
+                // from the user. Since we are triggering a "fake" input event,
+                // we specify that the original event is a key up/down.
+                input.dispatchEvent(new CustomEvent('input', {
+                    bubbles: true,
+                    cancelable: true,
+                    detail: {keyUpOrDown: true}
+                }));
+                this.notifyValueChangeOnBlur = true;
                 break;
             }
         }
     },
+    /**
+     * @override
+     */
+    _onUserValueChange() {
+        if (this._oldValue !== this._value) {
+            this._super(...arguments);
+        }
+    }
 });
 
 const MultiUserValueWidget = UserValueWidget.extend({
@@ -1456,10 +1558,26 @@ const ColorpickerUserValueWidget = SelectUserValueWidget.extend({
         if (this._value) {
             if (ColorpickerWidget.isCSSColor(this._value)) {
                 this.colorPreviewEl.style.backgroundColor = this._value;
-            } else if (!weUtils.isColorGradient(this._value)) {
-                this.colorPreviewEl.classList.add(`bg-${this._value}`);
-            } else {
+            } else if (weUtils.isColorGradient(this._value)) {
                 this.colorPreviewEl.style.backgroundImage = this._value;
+            } else {
+                // Checking if the className actually exists seems overkill but
+                // it is actually needed to prevent a crash. As an example, if a
+                // colorpicker widget is linked to a SnippetOption instance's
+                // `selectStyle` method designed to handle the "border-color"
+                // property of an element, the value received can be split if
+                // the item uses different colors for its top/right/bottom/left
+                // borders. For instance, you could receive "red blue" if the
+                // item as red top and bottom borders and blue left and right
+                // borders, in which case you would reach this `else` and try to
+                // add the class "bg-red blue" which would crash because of the
+                // space inside). In that case, we simply do not show any color.
+                // We could choose to handle this split-value case specifically
+                // but it was decided that this is enough for the moment.
+                const className = `bg-${this._value}`;
+                if (classes.includes(className)) {
+                    this.colorPreviewEl.classList.add(className);
+                }
             }
         }
         // If the palette was already opened (e.g. modifying a gradient), the new DOM state must be
@@ -1621,8 +1739,8 @@ const MediapickerUserValueWidget = UserValueWidget.extend({
             noIcons: true,
             noDocuments: true,
             isForBgVideo: true,
-            vimeoPreviewIds: ['299225971', '414790269', '420192073', '368484050', '334729960', '417478345',
-                '312451183', '415226028', '367762632', '340475898', '374265101', '370467553'],
+            vimeoPreviewIds: ['528686125', '430330731', '509869821', '397142251', '763851966', '486931161',
+                '499761556', '392935303', '728584384', '865314310', '511727912', '466830211'],
             'res_model': $editable.data('oe-model'),
             'res_id': $editable.data('oe-id'),
         }, el).open();
@@ -1853,6 +1971,7 @@ const ListUserValueWidget = UserValueWidget.extend({
         'click we-select.o_we_user_value_widget.o_we_add_list_item': '_onAddItemSelectClick',
         'click we-button.o_we_checkbox_wrapper': '_onAddItemCheckboxClick',
         'change table input': '_onListItemChange',
+        'mousedown': '_onWeListMousedown',
     },
 
     /**
@@ -1918,12 +2037,21 @@ const ListUserValueWidget = UserValueWidget.extend({
         if (this.createWidget) {
             const selectedIds = currentValues.map(({ id }) => id)
                 .filter(id => typeof id === 'number');
-            const selectedIdsDomain = ['id', 'not in', selectedIds];
+            // Note: it's important to simplify the domain at its maximum as the
+            // rpc using it are cached. Similar domains should be written the
+            // same way for the cache to work.
+            const selectedIdsDomain = selectedIds.length ? ['id', 'not in', selectedIds] : null;
             const selectedIdsDomainIndex = this.createWidget.options.domain.findIndex(domain => domain[0] === 'id' && domain[1] === 'not in');
             if (selectedIdsDomainIndex > -1) {
-                this.createWidget.options.domain[selectedIdsDomainIndex] = selectedIdsDomain;
+                if (selectedIdsDomain) {
+                    this.createWidget.options.domain[selectedIdsDomainIndex] = selectedIdsDomain;
+                } else {
+                    this.createWidget.options.domain.splice(selectedIdsDomainIndex, 1);
+                }
             } else {
-                this.createWidget.options.domain = [...this.createWidget.options.domain, selectedIdsDomain];
+                if (selectedIdsDomain) {
+                    this.createWidget.options.domain = [...this.createWidget.options.domain, selectedIdsDomain];
+                }
             }
             this.createWidget.setValue('');
             this.createWidget.inputEl.value = '';
@@ -2057,22 +2185,21 @@ const ListUserValueWidget = UserValueWidget.extend({
      * @private
      */
     _notifyCurrentState() {
+        const trimmed = (str) => str.trim().replace(/\s+/g, " ");
         const values = [...this.listTable.querySelectorAll('.o_we_list_record_name input')].map(el => {
-            const id = this.isCustom ? el.value : el.name;
-            const idInt = parseInt(id);
+            const id = trimmed(this.isCustom ? el.value : el.name);
             return Object.assign({
-                id: isNaN(idInt) ? id : idInt,
-                name: el.value,
-                display_name: el.value,
+                id: /^-?[0-9]{1,15}$/.test(id) ? parseInt(id) : id,
+                name: trimmed(el.value),
+                display_name: trimmed(el.value),
             }, el.dataset);
         });
         if (this.hasDefault) {
             const checkboxes = [...this.listTable.querySelectorAll('we-button.o_we_checkbox_wrapper.active')];
             this.selected = checkboxes.map(el => {
                 const input = el.parentElement.previousSibling.firstChild;
-                const id = input.name || input.value;
-                const idInt = parseInt(id);
-                return isNaN(idInt) ? id : idInt;
+                const id = trimmed(this.isCustom ? input.value : input.name);
+                return /^-?[0-9]{1,15}$/.test(id) ? parseInt(id) : id;
             });
             values.forEach(v => {
                 v.selected = this.selected.includes(v.id);
@@ -2151,8 +2278,24 @@ const ListUserValueWidget = UserValueWidget.extend({
     /**
      * @private
      */
-    _onListItemChange() {
-        this._notifyCurrentState();
+    _onListItemChange(ev) {
+        const timeSinceMousedown = ev.timeStamp - this.mousedownTime;
+        if (timeSinceMousedown < 500) {
+            // Without this "setTimeOut", "click" events are not triggered when
+            // clicking directly on a "we-button" of the "we-list" without first
+            // focusing out the input.
+            setTimeout(() => {
+                this._notifyCurrentState();
+            }, 500);
+        } else {
+            this._notifyCurrentState();
+        }
+    },
+    /**
+     * @private
+     */
+    _onWeListMousedown(ev) {
+        this.mousedownTime = ev.timeStamp;
     },
     /**
      * @private
@@ -2213,6 +2356,8 @@ const RangeUserValueWidget = UnitUserValueWidget.extend({
         }
         this._setInputAttributes(min, max, step);
         this.containerEl.appendChild(this.input);
+
+        this._onInputChange = _.debounce(this._onInputChange, 100);
     },
 
     //--------------------------------------------------------------------------
@@ -2373,6 +2518,7 @@ const SelectPagerUserValueWidget = SelectUserValueWidget.extend({
     },
 });
 
+const m2oRpcCache = {};
 const Many2oneUserValueWidget = SelectUserValueWidget.extend({
     className: (SelectUserValueWidget.prototype.className || '') + ' o_we_many2one',
     events: Object.assign({}, SelectUserValueWidget.prototype.events, {
@@ -2390,7 +2536,7 @@ const Many2oneUserValueWidget = SelectUserValueWidget.extend({
     init(parent, title, options, $target) {
         this.afterSearch = [];
         this.displayNameCache = {};
-        this._rpcCache = {};
+        this._rpcCache = m2oRpcCache;
         const {dataAttributes} = options;
         Object.assign(options, {
             limit: '5',
@@ -2527,24 +2673,12 @@ const Many2oneUserValueWidget = SelectUserValueWidget.extend({
      * @private
      */
     async _search(needle) {
-        this._userValueWidgets = this._userValueWidgets.filter(widget => !widget.isDestroyed());
-        // Remove select options
-        this._userValueWidgets
-            .filter(widget => {
-                return widget instanceof ButtonUserValueWidget &&
-                    widget.el.parentElement.matches('we-selection-items');
-            }).forEach(button => {
-                if (button.isPreviewed()) {
-                    button.notifyValueChange('reset');
-                }
-                button.destroy();
-            });
         const recTuples = await this._rpc({
             model: this.options.model,
             method: 'name_search',
             kwargs: {
                 name: needle,
-                args: this.options.domain,
+                args: await this._getSearchDomain(),
                 operator: "ilike",
                 limit: this.options.limit + 1,
             },
@@ -2554,6 +2688,18 @@ const Many2oneUserValueWidget = SelectUserValueWidget.extend({
             method: 'read',
             args: [recTuples.map(([id, _name]) => id), this.options.fields],
         });
+        // Remove select options.
+        this._userValueWidgets.filter(widget => {
+            return widget instanceof ButtonUserValueWidget &&
+                !widget.isDestroyed() &&
+                widget.el.parentElement.matches('we-selection-items');
+        }).forEach(button => {
+            if (button.isPreviewed()) {
+                button.notifyValueChange('reset');
+            }
+            button.destroy();
+        });
+        this._userValueWidgets = this._userValueWidgets.filter(widget => !widget.isDestroyed());
         records.forEach(record => {
             this.displayNameCache[record.id] = record.display_name;
         });
@@ -2603,6 +2749,14 @@ const Many2oneUserValueWidget = SelectUserValueWidget.extend({
         this.waitingForSearch = false;
         this.afterSearch.forEach(cb => cb());
         this.afterSearch = [];
+    },
+    /**
+     * Returns the domain to use for the search.
+     *
+     * @private
+     */
+    async _getSearchDomain() {
+        return this.options.domain;
     },
     /**
      * Returns the display name for a given record.
@@ -2690,6 +2844,11 @@ const Many2oneUserValueWidget = SelectUserValueWidget.extend({
             return;
         }
         if (widget && widget === this.createButton) {
+            // When the create button is clicked, make sure the text
+            // value is restored from the actual input element because
+            // it might have been removed when hovering existing tags.
+            // TODO review this, there is probably better to do
+            this.createInput._value = this.createInput.el.querySelector('input').value;
             if (!this.createInput._value) {
                 ev.stopPropagation();
             }
@@ -2737,14 +2896,14 @@ const Many2manyUserValueWidget = UserValueWidget.extend({
         });
         const selectedRecordIds = record[m2oField];
         // TODO: handle no record
-        const [modelData] = await this._rpc({
-            model: 'ir.model.fields',
-            method: 'search_read',
-            args: [[['model', '=', model], ['name', '=', m2oField]], ['relation', 'field_description']],
+        const modelData = await this._rpc({
+            model: model,
+            method: 'fields_get',
+            args: [[m2oField]],
         });
         // TODO: simultaneously fly both RPCs
-        this.m2oModel = modelData.relation;
-        this.m2oName = modelData.field_description; // Use as string attr?
+        this.m2oModel = modelData[m2oField].relation;
+        this.m2oName = modelData[m2oField].field_description; // Use as string attr?
 
         const selectedRecords = await this._rpc({
             model: this.m2oModel,
@@ -2882,7 +3041,8 @@ const SnippetOptionWidget = Widget.extend({
      */
     isTopFirstOption: false,
     /**
-     * Forces the target to not be possible to remove.
+     * Forces the target to not be possible to remove. It will also hide the
+     * clone button.
      *
      * @type {boolean}
      */
@@ -3103,6 +3263,13 @@ const SnippetOptionWidget = Widget.extend({
      * @param {boolean} previewMode - @see this.selectClass
      * @param {string} widgetValue
      * @param {Object} params
+     * @param {string} [params.forceStyle] if undefined, the method will not
+     *      set the inline style (and thus even remove it) if the item would
+     *      already have the given style without it (thanks to a CSS rule for
+     *      example). If defined (as a string), it acts as the "priority" param
+     *      of @see CSSStyleDeclaration.setProperty: it should be 'important' to
+     *      set the style as important or '' otherwise. Note that if forceStyle
+     *      is undefined, the style is always set as important when applied.
      * @returns {Promise|undefined}
      */
     selectStyle: async function (previewMode, widgetValue, params) {
@@ -3218,14 +3385,21 @@ const SnippetOptionWidget = Widget.extend({
         }
 
         let hasUserValue = false;
-        for (let i = cssProps.length - 1; i > 0; i--) {
-            hasUserValue = applyCSS.call(this, cssProps[i], values.pop(), styles) || hasUserValue;
+        const applyAllCSS = (values) => {
+            for (let i = cssProps.length - 1; i > 0; i--) {
+                hasUserValue = applyCSS.call(this, cssProps[i], values.pop(), styles) || hasUserValue;
+            }
+            hasUserValue = applyCSS.call(this, cssProps[0], values.join(' '), styles) || hasUserValue;
         }
-        hasUserValue = applyCSS.call(this, cssProps[0], values.join(' '), styles) || hasUserValue;
+
+        applyAllCSS([...values]);
 
         function applyCSS(cssProp, cssValue, styles) {
-            if (!weUtils.areCssValuesEqual(styles[cssProp], cssValue)) {
-                this.$target[0].style.setProperty(cssProp, cssValue, 'important');
+            const forceStyle = (typeof params.forceStyle !== 'undefined');
+            if (forceStyle
+                    || !weUtils.areCssValuesEqual(styles[cssProp], cssValue, cssProp, this.$target[0])) {
+                const priority = forceStyle ? params.forceStyle : 'important';
+                this.$target[0].style.setProperty(cssProp, cssValue, priority);
                 return true;
             }
             return false;
@@ -3233,6 +3407,13 @@ const SnippetOptionWidget = Widget.extend({
 
         if (params.extraClass) {
             this.$target.toggleClass(params.extraClass, hasUserValue);
+            if (hasUserValue) {
+                // Might have changed because of the class.
+                for (const cssProp of cssProps) {
+                    this.$target[0].style.removeProperty(cssProp);
+                }
+                applyAllCSS(values);
+            }
         }
 
         _restoreTransitions();
@@ -3296,7 +3477,6 @@ const SnippetOptionWidget = Widget.extend({
      *
      * @param {string} name - an identifier for a type of update
      * @param {*} data
-     * @returns {Promise}
      */
     notify: function (name, data) {
         if (name === 'target') {
@@ -3395,6 +3575,12 @@ const SnippetOptionWidget = Widget.extend({
                 }
 
                 const dependencies = widget.getDependencies();
+
+                if (dependencies.length === 1 && dependencies[0] === 'fake') {
+                    widget.toggleVisibility(false);
+                    return;
+                }
+
                 const dependenciesData = [];
                 dependencies.forEach(depName => {
                     const toBeActive = (depName[0] !== '!');
@@ -3557,11 +3743,13 @@ const SnippetOptionWidget = Widget.extend({
                     // if editing the other).
                     const parts = backgroundImageCssToParts(styles['background-image']);
                     if (parts.gradient) {
+                        _restoreTransitions();
                         return parts.gradient;
                     }
                 }
 
                 const cssProps = weUtils.CSS_SHORTHANDS[params.cssProperty] || [params.cssProperty];
+                const borderWidthCssProps = weUtils.CSS_SHORTHANDS['border-width'];
                 const cssValues = cssProps.map(cssProp => {
                     let value = styles[cssProp].trim();
                     if (cssProp === 'box-shadow') {
@@ -3570,6 +3758,11 @@ const SnippetOptionWidget = Widget.extend({
                         const color = values.find(s => !s.match(/^\d/));
                         values = values.join(' ').replace(color, '').trim();
                         value = `${color} ${values}${inset ? ' inset' : ''}`;
+                    }
+                    if (borderWidthCssProps.includes(cssProp) && value.endsWith('px')) {
+                        // Rounding value up avoids zoom-in issues.
+                        // Zoom-out issues are not an expected use case.
+                        value = `${Math.ceil(parseFloat(value))}px`;
                     }
                     return value;
                 });
@@ -3633,11 +3826,17 @@ const SnippetOptionWidget = Widget.extend({
      * @returns {Promise<boolean>|boolean}
      */
     _computeWidgetVisibility: async function (widgetName, params) {
-        if (widgetName === 'move_up_opt' || widgetName === 'move_left_opt') {
-            return !this.$target.is(':first-child');
-        }
-        if (widgetName === 'move_down_opt' || widgetName === 'move_right_opt') {
-            return !this.$target.is(':last-child');
+        const moveUpOrLeft = widgetName === 'move_up_opt' || widgetName === 'move_left_opt';
+        const moveDownOrRight = widgetName === 'move_down_opt' || widgetName === 'move_right_opt';
+
+        if (moveUpOrLeft || moveDownOrRight) {
+            // Consider only visible elements.
+            const direction = moveUpOrLeft ? "previousElementSibling" : "nextElementSibling";
+            let siblingEl = this.$target[0][direction];
+            while (siblingEl && window.getComputedStyle(siblingEl).display === "none") {
+                siblingEl = siblingEl[direction];
+            }
+            return !!siblingEl;
         }
         return true;
     },
@@ -4142,6 +4341,7 @@ registry.sizing = SnippetOptionWidget.extend({
             var beginClass = self.$target.attr('class');
             var regClass = new RegExp('\\s*' + resize[0][begin].replace(/[-]*[0-9]+/, '[-]*[0-9]+'), 'g');
 
+            self.options.wysiwyg.odooEditor.automaticStepUnactive("resizing");
             var cursor = $handle.css('cursor') + '-important';
             var $body = $(this.ownerDocument.body);
             $body.addClass(cursor);
@@ -4186,6 +4386,7 @@ registry.sizing = SnippetOptionWidget.extend({
                     $handlers.removeClass('o_active').dequeue();
                 });
 
+                self.options.wysiwyg.odooEditor.automaticStepActive("resizing");
                 if (begin === current) {
                     return;
                 }
@@ -4364,24 +4565,35 @@ registry['sizing_x'] = registry.sizing.extend({
      * @override
      */
     _onResize: function (compass, beginClass, current) {
-        if (compass === 'w') {
-            // don't change the right border position when we change the offset (replace col size)
-            var beginCol = Number(beginClass.match(/col-lg-([0-9]+)|$/)[1] || 0);
-            var beginOffset = Number(beginClass.match(/offset-lg-([0-9-]+)|$/)[1] || beginClass.match(/offset-xl-([0-9-]+)|$/)[1] || 0);
-            var offset = Number(this.grid.w[0][current].match(/offset-lg-([0-9-]+)|$/)[1] || 0);
-            if (offset < 0) {
-                offset = 0;
-            }
-            var colSize = beginCol - (offset - beginOffset);
-            if (colSize <= 0) {
-                colSize = 1;
-                offset = beginOffset + beginCol - 1;
-            }
-            this.$target.attr('class', this.$target.attr('class').replace(/\s*(offset-xl-|offset-lg-|col-lg-)([0-9-]+)/g, ''));
+        if (compass === 'w' || compass === 'e') {
+            const beginOffset = Number(beginClass.match(/offset-lg-([0-9-]+)|$/)[1] || beginClass.match(/offset-xl-([0-9-]+)|$/)[1] || 0);
 
-            this.$target.addClass('col-lg-' + (colSize > 12 ? 12 : colSize));
-            if (offset > 0) {
-                this.$target.addClass('offset-lg-' + offset);
+            if (compass === 'w') {
+                // don't change the right border position when we change the offset (replace col size)
+                var beginCol = Number(beginClass.match(/col-lg-([0-9]+)|$/)[1] || 0);
+                var offset = Number(this.grid.w[0][current].match(/offset-lg-([0-9-]+)|$/)[1] || 0);
+                if (offset < 0) {
+                    offset = 0;
+                }
+                var colSize = beginCol - (offset - beginOffset);
+                if (colSize <= 0) {
+                    colSize = 1;
+                    offset = beginOffset + beginCol - 1;
+                }
+                this.$target.attr('class', this.$target.attr('class').replace(/\s*(offset-xl-|offset-lg-|col-lg-)([0-9-]+)/g, ''));
+
+                this.$target.addClass('col-lg-' + (colSize > 12 ? 12 : colSize));
+                if (offset > 0) {
+                    this.$target.addClass('offset-lg-' + offset);
+                }
+            } else if (beginOffset > 0) {
+                const endCol = Number(this.grid.e[0][current].match(/col-lg-([0-9]+)|$/)[1] || 0);
+                // Avoids overflowing the grid to the right if the
+                // column size + the offset exceeds 12.
+                if ((endCol + beginOffset) > 12) {
+                    this.$target[0].className = this.$target[0].className.replace(/\s*(col-lg-)([0-9-]+)/g, '');
+                    this.$target[0].classList.add('col-lg-' + (12 - beginOffset));
+                }
             }
         }
         this._super.apply(this, arguments);
@@ -4398,16 +4610,55 @@ registry.Box = SnippetOptionWidget.extend({
     //--------------------------------------------------------------------------
 
     /**
+     * TODO this should be reviewed in master to avoid the need of using the
+     * 'reset' previewMode and having to remember the previous box-shadow value.
+     * We are forced to remember the previous box shadow before applying a new
+     * one as the whole box-shadow value is handled by multiple widgets.
+     *
      * @see this.selectClass for parameters
      */
-    setShadow(previewMode, widgetValue, params) {
-        this.$target.toggleClass(params.shadowClass, !!widgetValue);
-        const defaultShadow = this._getDefaultShadow(widgetValue, params.shadowClass);
-        this.$target[0].style.setProperty('box-shadow', defaultShadow, 'important');
-        if (widgetValue === 'outset') {
-            // In this case, the shadowClass is enough
-            this.$target[0].style.setProperty('box-shadow', '');
+    async setShadow(previewMode, widgetValue, params) {
+        // Check if the currently configured shadow is not using the same shadow
+        // mode, in which case nothing has to be done.
+        const styles = window.getComputedStyle(this.$target[0]);
+        const currentBoxShadow = styles['box-shadow'] || 'none';
+        const currentMode = currentBoxShadow === 'none'
+            ? ''
+            : currentBoxShadow.includes('inset') ? 'inset' : 'outset';
+        if (currentMode === widgetValue) {
+            return;
         }
+
+        if (previewMode === true) {
+            this._prevBoxShadow = currentBoxShadow;
+        }
+
+        // Add/remove the shadow class
+        this.$target.toggleClass(params.shadowClass, !!widgetValue);
+
+        // Change the mode of the old box shadow. If no shadow was currently
+        // set then get the shadow value that is supposed to be set according
+        // to the shadow mode. Try to apply it via the selectStyle method so
+        // that it is either ignored because the shadow class had its effect or
+        // forced (to the shadow value or none) if toggling the class is not
+        // enough (e.g. if the item has a default shadow coming from CSS rules,
+        // removing the shadow class won't be enough to remove the shadow but in
+        // most other cases it will).
+        let shadow = 'none';
+        if (previewMode === 'reset') {
+            shadow = this._prevBoxShadow;
+        } else {
+            if (currentBoxShadow === 'none') {
+                shadow = this._getDefaultShadow(widgetValue, params.shadowClass) || 'none';
+            } else {
+                if (widgetValue === 'outset') {
+                    shadow = currentBoxShadow.replace('inset', '').trim();
+                } else if (widgetValue === 'inset') {
+                    shadow = currentBoxShadow + ' inset';
+                }
+            }
+        }
+        await this.selectStyle(previewMode, shadow, Object.assign({cssProperty: 'box-shadow'}, params));
     },
 
     //--------------------------------------------------------------------------
@@ -4447,34 +4698,27 @@ registry.Box = SnippetOptionWidget.extend({
         if (type) {
             el.classList.add(shadowClass);
         }
+
+        let shadow = ''; // TODO in master this should be changed to 'none'
         document.body.appendChild(el);
         switch (type) {
             case 'outset': {
-                return $(el).css('box-shadow');
+                shadow = $(el).css('box-shadow');
+                break;
             }
             case 'inset': {
-                return $(el).css('box-shadow') + ' inset';
+                shadow = $(el).css('box-shadow') + ' inset';
+                break;
             }
         }
         el.remove();
-        return '';
+        return shadow;
     }
 });
 
 
 
 registry.layout_column = SnippetOptionWidget.extend({
-    /**
-     * @override
-     */
-    start: function () {
-        // Needs to be done manually for now because _computeWidgetVisibility
-        // doesn't go through this option for buttons inside of a select.
-        // TODO: improve this.
-        this.$el.find('we-button[data-name="zero_cols_opt"]')
-            .toggleClass('d-none', !this.$target.is('.s_allow_columns'));
-        return this._super(...arguments);
-    },
 
     //--------------------------------------------------------------------------
     // Options
@@ -4489,7 +4733,12 @@ registry.layout_column = SnippetOptionWidget.extend({
         const previousNbColumns = this.$('> .row').children().length;
         let $row = this.$('> .row');
         if (!$row.length) {
+            const restoreCursor = preserveCursor(this.$target[0].ownerDocument);
+            for (const node of descendants(this.$target[0])) {
+                node.ouid = undefined;
+            }
             $row = this.$target.contents().wrapAll($('<div class="row"><div class="col-lg-12"/></div>')).parent().parent();
+            restoreCursor();
         }
 
         const nbColumns = parseInt(widgetValue);
@@ -4499,7 +4748,12 @@ registry.layout_column = SnippetOptionWidget.extend({
         // TODO: make this more generic in activate_snippet event handler.
         await new Promise(resolve => setTimeout(resolve));
         if (nbColumns === 0) {
+            const restoreCursor = preserveCursor(this.$target[0].ownerDocument);
+            for (const node of descendants($row[0])) {
+                node.ouid = undefined;
+            }
             $row.contents().unwrap().contents().unwrap();
+            restoreCursor();
             this.trigger_up('activate_snippet', {$snippet: this.$target});
         } else if (previousNbColumns === 0) {
             this.trigger_up('activate_snippet', {$snippet: this.$('> .row').children().first()});
@@ -4516,6 +4770,20 @@ registry.layout_column = SnippetOptionWidget.extend({
     _computeWidgetState: function (methodName, params) {
         if (methodName === 'selectCount') {
             return this.$('> .row').children().length;
+        }
+        return this._super(...arguments);
+    },
+    /**
+     * @override
+     */
+    _computeWidgetVisibility(widgetName, params) {
+        if (widgetName === 'zero_cols_opt') {
+            // Note: "s_allow_columns" indicates containers which may have
+            // bare content (without columns) and are allowed to have columns.
+            // By extension, we only show the "None" option on elements that
+            // were marked as such as they were allowed to have bare content in
+            // the first place.
+            return this.$target.is('.s_allow_columns');
         }
         return this._super(...arguments);
     },
@@ -4615,27 +4883,50 @@ registry.SnippetMove = SnippetOptionWidget.extend({
         const isNavItem = this.$target[0].classList.contains('nav-item');
         const $tabPane = isNavItem ? $(this.$target.find('.nav-link')[0].hash) : null;
         switch (widgetValue) {
-            case 'prev':
-                this.$target.prev().before(this.$target);
+            case 'prev': {
+                // Consider only visible elements.
+                let prevEl = this.$target[0].previousElementSibling;
+                while (prevEl && window.getComputedStyle(prevEl).display === "none") {
+                    prevEl = prevEl.previousElementSibling;
+                }
+                prevEl && prevEl.insertAdjacentElement("beforebegin", this.$target[0]);
                 if (isNavItem) {
                     $tabPane.prev().before($tabPane);
                 }
                 break;
-            case 'next':
-                this.$target.next().after(this.$target);
+            }
+            case 'next': {
+                // Consider only visible elements.
+                let nextEl = this.$target[0].nextElementSibling;
+                while (nextEl && window.getComputedStyle(nextEl).display === "none") {
+                    nextEl = nextEl.nextElementSibling;
+                }
+                nextEl && nextEl.insertAdjacentElement("afterend", this.$target[0]);
                 if (isNavItem) {
                     $tabPane.next().after($tabPane);
                 }
                 break;
+            }
         }
         if (!this.$target.is(this.data.noScroll)
                 && (params.name === 'move_up_opt' || params.name === 'move_down_opt')) {
-            scrollTo(this.$target[0], {
-                extraOffset: 50,
-                easing: 'linear',
-                duration: 550,
-            });
+            const mainScrollingEl = $().getScrollingElement()[0];
+            const elTop = this.$target[0].getBoundingClientRect().top;
+            const heightDiff = mainScrollingEl.offsetHeight - this.$target[0].offsetHeight;
+            const bottomHidden = heightDiff < elTop;
+            const hidden = elTop < 0 || bottomHidden;
+            if (hidden) {
+                scrollTo(this.$target[0], {
+                    extraOffset: 50,
+                    forcedOffset: bottomHidden ? heightDiff - 50 : undefined,
+                    easing: 'linear',
+                    duration: 500,
+                });
+            }
         }
+        // Update the "Invisible Elements" panel as the order of invisible
+        // snippets could have changed on the page.
+        this.trigger_up("update_invisible_dom");
     },
 });
 
@@ -4643,6 +4934,25 @@ registry.SnippetMove = SnippetOptionWidget.extend({
  * Allows for media to be replaced.
  */
 registry.ReplaceMedia = SnippetOptionWidget.extend({
+    xmlDependencies: ['/web_editor/static/src/xml/image_link_tools.xml'],
+
+    /**
+     * @override
+     */
+    onFocus() {
+        core.bus.on('activate_image_link_tool', this, this._activateLinkTool);
+        core.bus.on('deactivate_image_link_tool', this, this._deactivateLinkTool);
+        // When we start editing an image, rerender the UI to ensure the
+        // we-select that suggests the anchors is in a consistent state.
+        this.rerender = true;
+    },
+    /**
+     * @override
+     */
+    onBlur() {
+        core.bus.off('activate_image_link_tool', this, this._activateLinkTool);
+        core.bus.off('deactivate_image_link_tool', this, this._deactivateLinkTool);
+    },
 
     //--------------------------------------------------------------------------
     // Options
@@ -4658,75 +4968,79 @@ registry.ReplaceMedia = SnippetOptionWidget.extend({
         // to be refactored when the new editor is merged
         this.$target.dblclick();
     },
-});
-
-/**
- * General options of an image.
- */
-registry.ImageTools = SnippetOptionWidget.extend({
-
-    //--------------------------------------------------------------------------
-    // Options
-    //--------------------------------------------------------------------------
-
     /**
-     * Displays the image cropping tools
+     * Makes the image a clickable link by wrapping it in an <a>.
+     * This function is also called for the opposite operation.
      *
      * @see this.selectClass for parameters
      */
-    async crop() {
-        this.trigger_up('hide_overlay');
-        this.trigger_up('disable_loading_effect');
-        new weWidgets.ImageCropWidget(this, this.$target[0]).appendTo(this.options.wysiwyg.$editable);
-
-        await new Promise(resolve => {
-            this.$target.one('image_cropper_destroyed', resolve);
-        });
-        this.trigger_up('enable_loading_effect');
-    },
-    /**
-     * Displays the image transformation tools
-     *
-     * @see this.selectClass for parameters
-     */
-    async transform() {
-        this.trigger_up('hide_overlay');
-        this.trigger_up('disable_loading_effect');
-
-        const document = this.$target[0].ownerDocument;
-        this.$target.transfo({document});
-        const mousedown = mousedownEvent => {
-            if (!$(mousedownEvent.target).closest('.transfo-container').length) {
-                this.$target.transfo('destroy');
-                $(document).off('mousedown', mousedown);
+    setLink(previewMode, widgetValue, params) {
+        const parentEl = this.$target[0].parentNode;
+        if (parentEl.tagName !== 'A') {
+            const wrapperEl = document.createElement('a');
+            this.$target[0].after(wrapperEl);
+            wrapperEl.appendChild(this.$target[0]);
+            // TODO Remove when bug fixed in Chrome.
+            if (this.$target[0].getBoundingClientRect().width === 0) {
+                // Chrome lost lazy-loaded image => Force Chrome to display image.
+                const src = this.$target[0].src;
+                this.$target[0].src = '';
+                this.$target[0].src = src;
             }
-        };
-        $(document).on('mousedown', mousedown);
-
-        await new Promise(resolve => {
-            document.addEventListener('mouseup', resolve, {once: true});
-        });
-        this.trigger_up('enable_loading_effect');
+        } else {
+            const fragment = document.createDocumentFragment();
+            fragment.append(...parentEl.childNodes);
+            parentEl.replaceWith(fragment);
+        }
     },
     /**
-     * Resets the image cropping
+     * Changes the image link so that the URL is opened on another tab or not
+     * when it is clicked.
      *
      * @see this.selectClass for parameters
      */
-    async resetCrop() {
-        const cropper = new weWidgets.ImageCropWidget(this, this.$target[0]);
-        await cropper.appendTo(this.options.wysiwyg.$editable);
-        await cropper.reset();
+    setNewWindow(previewMode, widgetValue, params) {
+        const linkEl = this.$target[0].parentElement;
+        if (widgetValue) {
+            linkEl.setAttribute('target', '_blank');
+        } else {
+            linkEl.removeAttribute('target');
+        }
     },
     /**
-     * Resets the image rotation and translation
+     * Records the target url of the hyperlink.
      *
      * @see this.selectClass for parameters
      */
-    async resetTransform() {
-        this.$target
-            .attr('style', (this.$target.attr('style') || '')
-            .replace(/[^;]*transform[\w:]*;?/g, ''));
+    setUrl(previewMode, widgetValue, params) {
+        const linkEl = this.$target[0].parentElement;
+        let url = widgetValue;
+        if (!url) {
+            // As long as there is no URL, the image is not considered a link.
+            linkEl.removeAttribute('href');
+            this.$target.trigger('href_changed');
+            return;
+        }
+        if (!url.startsWith('/') && !url.startsWith('#')
+                && !/^([a-zA-Z]*.):.+$/gm.test(url)) {
+            // We permit every protocol (http:, https:, ftp:, mailto:,...).
+            // If none is explicitly specified, we assume it is a http.
+            url = 'http://' + url;
+        }
+        linkEl.setAttribute('href', url);
+        this.rerender = true;
+        this.$target.trigger('href_changed');
+    },
+    /**
+     * @override
+     */
+    async updateUI() {
+        if (this.rerender) {
+            this.rerender = false;
+            await this._rerenderXML();
+            return;
+        }
+        return this._super.apply(this, arguments);
     },
 
     //--------------------------------------------------------------------------
@@ -4734,49 +5048,64 @@ registry.ImageTools = SnippetOptionWidget.extend({
     //--------------------------------------------------------------------------
 
     /**
-￼    * @private
-￼    */
-    _isTransformed() {
-        return this.$target.is('[style*="transform"]');
+     * @private
+     */
+    _activateLinkTool() {
+        if (this.$target[0].parentElement.tagName === 'A') {
+            this._requestUserValueWidgets('media_url_opt')[0].focus();
+        } else {
+            this._requestUserValueWidgets('media_link_opt')[0].enable();
+        }
     },
     /**
-￼    * @private
-￼    */
-    _isCropped() {
-        return this.$target.hasClass('o_we_image_cropped');
+     * @private
+     */
+    _deactivateLinkTool() {
+        const parentEl = this.$target[0].parentNode;
+        if (parentEl.tagName === 'A') {
+            this._requestUserValueWidgets('media_link_opt')[0].enable();
+        }
     },
     /**
      * @override
      */
-    async _computeWidgetState(methodName, params) {
-        if (methodName === 'selectStyle' && params.cssProperty === 'width') {
-            // TODO check how to handle this the right way (here using inline
-            // style instead of computed because of the messy %-px convertion
-            // and the messy auto keyword).
-            const width = this.$target[0].style.width.trim();
-            if (width[width.length - 1] === '%') {
-                return `${parseInt(width)}%`;
-            } else {
-                return '';
+    _computeWidgetState(methodName, params) {
+        const parentEl = this.$target[0].parentElement;
+        const linkEl = parentEl.tagName === 'A' ? parentEl : null;
+        switch (methodName) {
+            case 'setLink': {
+                return linkEl ? 'true' : '';
             }
-        } else if (methodName === 'transform') {
-            return this._isTransformed() ? 'true' : '';
-        } else if (methodName === 'crop') {
-            return this._isCropped() ? 'true' : '';
+            case 'setUrl': {
+                let href = linkEl ? linkEl.getAttribute('href') : '';
+                return href || '';
+            }
+            case 'setNewWindow': {
+                const target = linkEl ? linkEl.getAttribute('target') : '';
+                return target && target === '_blank' ? 'true' : '';
+            }
         }
         return this._super(...arguments);
     },
     /**
      * @override
      */
-    _computeWidgetVisibility(widgetName, params) {
-        if (params.optionsPossibleValues.resetTransform) {
-            return this._isTransformed();
-        }
-        if (params.optionsPossibleValues.resetCrop) {
-            return this._isCropped();
+    async _computeWidgetVisibility(widgetName, params) {
+        if (widgetName === 'media_link_opt') {
+            if (this.$target[0].matches('img')) {
+                return isImageSupportedForStyle(this.$target[0]);
+            }
+            return !this.$target[0].classList.contains('media_iframe_video');
         }
         return this._super(...arguments);
+    },
+    /**
+     * @override
+     */
+    async _renderCustomXML(uiFragment) {
+        const rowEl = uiFragment.querySelector('we-row');
+        rowEl.insertAdjacentHTML('beforeend', qweb.render('web_editor.media_link_tools_button'));
+        rowEl.insertAdjacentHTML('afterend', qweb.render('web.editor.media_link_tools_fields'));
     },
 });
 
@@ -4802,6 +5131,7 @@ const ImageHandlerOption = SnippetOptionWidget.extend({
         weightEl.classList.add('o_we_image_weight', 'o_we_tag', 'd-none');
         weightEl.title = _t("Size");
         this.$weight = $(weightEl);
+        await this._applyOptions(false);
     },
 
     //--------------------------------------------------------------------------
@@ -4815,6 +5145,7 @@ const ImageHandlerOption = SnippetOptionWidget.extend({
         await this._super(...arguments);
 
         if (this._filesize === undefined) {
+            this.$weight.addClass('d-none');
             await this._applyOptions(false);
         }
         if (this._filesize !== undefined) {
@@ -4888,6 +5219,7 @@ const ImageHandlerOption = SnippetOptionWidget.extend({
      */
     async _computeWidgetState(methodName, params) {
         const img = this._getImg();
+        const _super = this._super.bind(this);
 
         // Make sure image is loaded because we need its naturalWidth
         await new Promise((resolve, reject) => {
@@ -4915,7 +5247,7 @@ const ImageHandlerOption = SnippetOptionWidget.extend({
                 return options[filterProperty] || defaultValue;
             }
         }
-        return this._super(...arguments);
+        return _super(...arguments);
     },
     /**
      * @abstract
@@ -4926,6 +5258,9 @@ const ImageHandlerOption = SnippetOptionWidget.extend({
      */
     async _renderCustomXML(uiFragment) {
         const img = this._getImg();
+        if (this._isAllowedOnAllImages()) {
+            return;
+        }
         if (!this.originalSrc || !this._isImageSupportedForProcessing(img)) {
             [...uiFragment.childNodes].forEach(node => node.remove());
             return;
@@ -4936,7 +5271,10 @@ const ImageHandlerOption = SnippetOptionWidget.extend({
         });
 
         if (this._getImageMimetype(img) !== 'image/jpeg') {
-            uiFragment.querySelector('we-range[data-set-quality]').remove();
+            const optQuality = uiFragment.querySelector('we-range[data-set-quality]');
+            if (optQuality) {
+                optQuality.remove();
+            }
         }
     },
     /**
@@ -4979,6 +5317,7 @@ const ImageHandlerOption = SnippetOptionWidget.extend({
         }
         if (!this._isImageSupportedForProcessing(img)) {
             this.originalId = null;
+            this._filesize = undefined;
             return;
         }
         const dataURL = await applyModifications(img, {mimetype: this._getImageMimetype(img)});
@@ -5066,6 +5405,15 @@ const ImageHandlerOption = SnippetOptionWidget.extend({
     _isImageSupportedForProcessing(img) {
         return isImageSupportedForProcessing(this._getImageMimetype(img));
     },
+    /**
+     * TODO: adapt in master (used to keep ImageTools related options available
+     * for all supported images).
+     *
+     * @returns {Boolean}
+     */
+    _isAllowedOnAllImages() {
+        return isImageSupportedForStyle(this._getImg());
+    },
 });
 
 /**
@@ -5088,7 +5436,9 @@ const _addAnimatedShapeLabel = function addAnimatedShapeLabel(containerEl) {
 /**
  * Controls image width and quality.
  */
-registry.ImageOptimize = ImageHandlerOption.extend({
+registry.ImageTools = ImageHandlerOption.extend({
+    MAX_SUGGESTED_WIDTH: 1920,
+
     /**
      * @constructor
      */
@@ -5116,6 +5466,74 @@ registry.ImageOptimize = ImageHandlerOption.extend({
     // Options
     //--------------------------------------------------------------------------
 
+    /**
+     * Displays the image cropping tools
+     *
+     * @see this.selectClass for parameters
+     */
+    async crop() {
+        this.trigger_up('disable_loading_effect');
+        new weWidgets.ImageCropWidget(this, this.$target[0]).appendTo(this.options.wysiwyg.odooEditor.document.body);
+
+        await new Promise(resolve => {
+            this.$target.one('image_cropper_destroyed', async () => {
+                await this._reapplyCurrentShape();
+                resolve();
+            });
+        });
+        this.trigger_up('enable_loading_effect');
+    },
+    /**
+     * Displays the image transformation tools
+     *
+     * @see this.selectClass for parameters
+     */
+    async transform() {
+        this.trigger_up('hide_overlay');
+        this.trigger_up('disable_loading_effect');
+
+        const document = this.$target[0].ownerDocument;
+        const playState = this.$target[0].style.animationPlayState;
+        const transition = this.$target[0].style.transition;
+        this.$target.transfo({document});
+        const mousedown = mousedownEvent => {
+            if (!$(mousedownEvent.target).closest('.transfo-container').length) {
+                this.$target.transfo('destroy');
+                $(document).off('mousedown', mousedown);
+                // Restore animation css properties potentially affected by the
+                // jQuery transfo plugin.
+                this.$target[0].style.animationPlayState = playState;
+                this.$target[0].style.transition = transition;
+            }
+        };
+        $(document).on('mousedown', mousedown);
+
+        await new Promise(resolve => {
+            document.addEventListener('mouseup', resolve, {once: true});
+        });
+        this.trigger_up('enable_loading_effect');
+    },
+    /**
+     * Resets the image cropping
+     *
+     * @see this.selectClass for parameters
+     */
+    async resetCrop() {
+        const cropper = new weWidgets.ImageCropWidget(this, this.$target[0]);
+        await cropper.appendTo(this.options.wysiwyg.odooEditor.document.body);
+        await cropper.reset();
+        await this._reapplyCurrentShape();
+    },
+    /**
+     * Resets the image rotation and translation
+     *
+     * @see this.selectClass for parameters
+     */
+    async resetTransform() {
+        this.$target
+            .attr('style', (this.$target.attr('style') || '')
+            .replace(/[^;]*transform[\w:]*;?/g, ''));
+    },
     /**
      * @see this.selectClass for parameters
      */
@@ -5171,6 +5589,18 @@ registry.ImageOptimize = ImageHandlerOption.extend({
     //--------------------------------------------------------------------------
 
     /**
+￼    * @private
+￼    */
+    _isTransformed() {
+        return this.$target.is('[style*="transform"]');
+    },
+    /**
+￼    * @private
+￼    */
+    _isCropped() {
+        return this.$target.hasClass('o_we_image_cropped');
+    },
+    /**
      * @override
      */
     async _applyOptions() {
@@ -5194,7 +5624,7 @@ registry.ImageOptimize = ImageHandlerOption.extend({
         const [module, directory, fileName] = shapeName.split('/');
         let shape = this.shapeCache[fileName];
         if (!shape) {
-            const shapeURL = `/${module}/static/image_shapes/${directory}/${fileName}.svg`;
+            const shapeURL = `/${encodeURIComponent(module)}/static/image_shapes/${encodeURIComponent(directory)}/${encodeURIComponent(fileName)}.svg`;
             shape = await (await fetch(shapeURL)).text();
             this.shapeCache[fileName] = shape;
         }
@@ -5272,20 +5702,36 @@ registry.ImageOptimize = ImageHandlerOption.extend({
      * @override
      */
     _computeMaxDisplayWidth() {
-        // TODO: read widths from computed style in case container widths are not default
-        const displayWidth = this._getImg().clientWidth;
-        // If the image is in a column, it might get bigger on smaller screens.
-        // We use col-lg for this in snippets, so they get bigger on the md breakpoint
-        if (this.$target.closest('[class*="col-lg"]').length) {
-            // container and o_container_small have maximum inner width of 690px on the md breakpoint
-            if (this.$target.closest('.container, .o_container_small').length) {
-                return Math.min(1920, Math.max(displayWidth, 690));
-            }
-            // A container-fluid's max inner width is 962px on the md breakpoint
-            return Math.min(1920, Math.max(displayWidth, 962));
+        const img = this._getImg();
+        const computedStyles = window.getComputedStyle(img);
+        const displayWidth = parseFloat(computedStyles.getPropertyValue('width'));
+        const gutterWidth = parseFloat(computedStyles.getPropertyValue('--o-grid-gutter-width')) || 30;
+
+        // For the logos we don't want to suggest a width too small.
+        if (this.$target[0].closest('nav')) {
+            return Math.round(Math.min(displayWidth * 3, this.MAX_SUGGESTED_WIDTH));
+        // If the image is in a container(-small), it might get bigger on
+        // smaller screens. So we suggest the width of the current image unless
+        // it is smaller than the size of the container on the md breapoint
+        // (which is where our bootstrap columns fallback to full container
+        // width since we only use col-lg-* in Odoo).
+        } else if (img.closest('.container, .o_container_small')) {
+            const mdContainerMaxWidth = parseFloat(computedStyles.getPropertyValue('--o-md-container-max-width')) || 720;
+            const mdContainerInnerWidth = mdContainerMaxWidth - gutterWidth;
+            return Math.round(utils.confine(displayWidth, mdContainerInnerWidth, this.MAX_SUGGESTED_WIDTH));
+        // If the image is displayed in a container-fluid, it might also get
+        // bigger on smaller screens. The same way, we suggest the width of the
+        // current image unless it is smaller than the max size of the container
+        // on the md breakpoint (which is the LG breakpoint since the container
+        // fluid is full-width).
+        } else if (img.closest('.container-fluid')) {
+            const lgBp = parseFloat(computedStyles.getPropertyValue('--breakpoint-lg')) || 992;
+            const mdContainerFluidMaxInnerWidth = lgBp - gutterWidth;
+            return Math.round(utils.confine(displayWidth, mdContainerFluidMaxInnerWidth, this.MAX_SUGGESTED_WIDTH));
         }
-        // If it's not in a col-lg, it's probably not going to change size depending on breakpoints
-        return displayWidth;
+        // If it's not in a container, it's probably not going to change size
+        // depending on breakpoints. We still keep a margin safety.
+        return Math.round(Math.min(displayWidth * 1.5, this.MAX_SUGGESTED_WIDTH));
     },
     /**
      * @override
@@ -5297,8 +5743,15 @@ registry.ImageOptimize = ImageHandlerOption.extend({
      * @override
      */
     _relocateWeightEl() {
+        if (!this.$overlay.data('$optionsSection')) {
+            return;
+        }
         const leftPanelEl = this.$overlay.data('$optionsSection')[0];
         const titleTextEl = leftPanelEl.querySelector('we-title > span');
+        const weightEl = titleTextEl.querySelector('.o_we_image_weight');
+        if (weightEl) {
+            weightEl.remove();
+        }
         this.$weight.appendTo(titleTextEl);
     },
     /**
@@ -5314,6 +5767,16 @@ registry.ImageOptimize = ImageHandlerOption.extend({
             const colors = img.dataset.shapeColors.split(';');
             return colors[parseInt(params.colorId)];
         }
+        if (params.optionsPossibleValues.resetTransform) {
+            return this._isTransformed();
+        }
+        if (params.optionsPossibleValues.resetCrop) {
+            return this._isCropped();
+        }
+        // Only the 'Crop' widget is visible when image is not supported for style options.
+        if (Object.keys(params.optionsPossibleValues).some(methodName => ['transform', 'selectStyle'].includes(methodName))) {
+            return isImageSupportedForStyle(this._getImg());
+        }
         return this._super();
     },
     /**
@@ -5321,8 +5784,28 @@ registry.ImageOptimize = ImageHandlerOption.extend({
      */
     _computeWidgetState(methodName, params) {
         switch (methodName) {
-            case 'setImgShape':
+            case 'selectStyle': {
+                if (params.cssProperty === 'width') {
+                    // TODO check how to handle this the right way (here using
+                    // inline style instead of computed because of the messy
+                    // %-px convertion and the messy auto keyword).
+                    const width = this.$target[0].style.width.trim();
+                    if (width[width.length - 1] === '%') {
+                        return `${parseInt(width)}%`;
+                    }
+                    return '';
+                }
+                break;
+            }
+            case 'transform': {
+                return this._isTransformed() ? 'true' : '';
+            }
+            case 'crop': {
+                return this._isCropped() ? 'true' : '';
+            }
+            case 'setImgShape': {
                 return this._getImg().dataset.shape || '';
+            }
             case 'setImgShapeColor': {
                 const img = this._getImg();
                 return (img.dataset.shapeColors && img.dataset.shapeColors.split(';')[parseInt(params.colorId)]) || '';
@@ -5343,7 +5826,7 @@ registry.ImageOptimize = ImageHandlerOption.extend({
         uiFragment.querySelectorAll('we-select-page we-button[data-set-img-shape]').forEach(btn => {
             const image = document.createElement('img');
             const [moduleName, directory, shapeName] = btn.dataset.setImgShape.split('/');
-            image.src = `/${moduleName}/static/image_shapes/${directory}/${shapeName}.svg`;
+            image.src = `/${encodeURIComponent(moduleName)}/static/image_shapes/${encodeURIComponent(directory)}/${encodeURIComponent(shapeName)}.svg`;
             $(btn).prepend(image);
 
             if (btn.dataset.animated) {
@@ -5382,7 +5865,7 @@ registry.ImageOptimize = ImageHandlerOption.extend({
         const img = this._getImg();
         const match = img.src.match(/\/web_editor\/image_shape\/(\w+\.\w+)/);
         if (img.dataset.shape && match) {
-            return this._loadImageInfo(`/web/image/${match[1]}`);
+            return this._loadImageInfo(`/web/image/${encodeURIComponent(match[1])}`);
         }
         return this._super(...arguments);
     },
@@ -5405,6 +5888,16 @@ registry.ImageOptimize = ImageHandlerOption.extend({
             // Image data-mimetype should be changed to SVG since loadImageInfo()
             // will set the original attachment mimetype on it.
             img.dataset.mimetype = 'image/svg+xml';
+        }
+    },
+    /**
+     * @private
+     */
+    async _reapplyCurrentShape() {
+        const img = this._getImg();
+        if (img.dataset.shape) {
+            await this._loadShape(img.dataset.shape);
+            await this._applyShapeAndColors(true, (img.dataset.shapeColors && img.dataset.shapeColors.split(';')));
         }
     },
 
@@ -5431,12 +5924,22 @@ registry.ImageOptimize = ImageHandlerOption.extend({
      * @param {Event} ev
      */
     async _onImageCropped(ev) {
-        const img = this._getImg();
-        if (img.dataset.shape) {
-            await this._loadShape(img.dataset.shape);
-            await this._applyShapeAndColors(true, (img.dataset.shapeColors && img.dataset.shapeColors.split(';')));
-        }
         await this._rerenderXML();
+    },
+});
+
+// TODO: adapt in master to only use ImageTools.
+registry.ImageOptimize = registry.ImageTools.extend({
+
+    //--------------------------------------------------------------------------
+    // Private
+    //--------------------------------------------------------------------------
+
+    /**
+     * @override
+     */
+    _isAllowedOnAllImages() {
+        return false;
     },
 });
 
@@ -5457,22 +5960,6 @@ registry.BackgroundOptimize = ImageHandlerOption.extend({
     destroy() {
         this.$target.off('.BackgroundOptimize');
         return this._super(...arguments);
-    },
-    /**
-     * Marks the target for creation of an attachment and copies data attributes
-     * to the target so that they can be restored on this.img in later editions.
-     *
-     * @override
-     */
-    async cleanForSave() {
-        const img = this._getImg();
-        if (img.matches('.o_modified_image_to_save')) {
-            this.$target.addClass('o_modified_image_to_save');
-            Object.entries(img.dataset).forEach(([key, value]) => {
-                this.$target[0].dataset[key] = value;
-            });
-            this.$target[0].dataset.bgSrc = img.getAttribute('src');
-        }
     },
 
     //--------------------------------------------------------------------------
@@ -5498,15 +5985,23 @@ registry.BackgroundOptimize = ImageHandlerOption.extend({
      */
     async _loadImageInfo() {
         this.img = new Image();
-        Object.entries(this.$target[0].dataset).filter(([key]) =>
-            // Avoid copying dynamic editor attributes
-            !['oeId','oeModel', 'oeField', 'oeXpath', 'noteId'].includes(key)
-        ).forEach(([key, value]) => {
-            this.img.dataset[key] = value;
-        });
-        const src = getBgImageURL(this.$target[0]);
-        // Don't set the src if not relative (ie, not local image: cannot be modified)
-        this.img.src = src.startsWith('/') ? src : '';
+        // In the case of a parallax, the background of the snippet is actually
+        // set on a child <span> and should be focused here. This is necessary
+        // because, at this point, the $target has not yet been updated in the
+        // notify() method ("option_update" event), although the event is
+        // properly fired from the parallax.
+        const targetEl = this.$target[0].classList.contains("oe_img_bg")
+            ? this.$target[0] : this.$target[0].querySelector(":scope > .s_parallax_bg.oe_img_bg");
+        if (targetEl) {
+            Object.entries(targetEl.dataset).filter(([key]) =>
+                isBackgroundImageAttribute(key)).forEach(([key, value]) => {
+                this.img.dataset[key] = value;
+            });
+            const src = getBgImageURL(targetEl);
+            // Don't set the src if not relative (ie, not local image: cannot be
+            // modified)
+            this.img.src = src.startsWith("/") ? src : "";
+        }
         return await this._super(...arguments);
     },
     /**
@@ -5533,6 +6028,21 @@ registry.BackgroundOptimize = ImageHandlerOption.extend({
         parts.url = `url('${img.getAttribute('src')}')`;
         const combined = backgroundImagePartsToCss(parts);
         this.$target.css('background-image', combined);
+        // Apply modification on the DOM HTML element that is currently being
+        // modified.
+        this.$target[0].classList.add("o_modified_image_to_save");
+        // First delete the data attributes relative to the image background
+        // from the target as a data attribute could have been be removed (ex:
+        // glFilter).
+        for (const attribute in this.$target[0].dataset) {
+            if (isBackgroundImageAttribute(attribute)) {
+                delete this.$target[0].dataset[attribute];
+            }
+        }
+        Object.entries(img.dataset).forEach(([key, value]) => {
+            this.$target[0].dataset[key] = value;
+        });
+        this.$target[0].dataset.bgSrc = img.getAttribute("src");
     },
 
     //--------------------------------------------------------------------------
@@ -5545,6 +6055,7 @@ registry.BackgroundOptimize = ImageHandlerOption.extend({
      * @private
      */
     async _onBackgroundChanged(ev, previewMode) {
+        ev.stopPropagation();
         if (!previewMode) {
             this.trigger_up('snippet_edition_request', {exec: async () => {
                 await this._autoOptimizeImage();
@@ -5744,12 +6255,29 @@ registry.BackgroundImage = SnippetOptionWidget.extend({
      */
     setTarget: function () {
         // When we change the target of this option we need to transfer the
-        // background-image from the old target to the new one.
+        // background-image and the dataset information relative to this image
+        // from the old target to the new one.
         const oldBgURL = getBgImageURL(this.$target);
+        const isModifiedImage = this.$target[0].classList.contains("o_modified_image_to_save");
+        const filteredOldDataset = Object.entries(this.$target[0].dataset).filter(([key]) => {
+            return isBackgroundImageAttribute(key);
+        });
+        // Delete the dataset information relative to the background-image of
+        // the old target.
+        filteredOldDataset.forEach(([key]) => {
+            delete this.$target[0].dataset[key];
+        });
+        // It is important to delete ".o_modified_image_to_save" from the old
+        // target as its image source will be deleted.
+        this.$target[0].classList.remove("o_modified_image_to_save");
         this._setBackground('');
         this._super(...arguments);
         if (oldBgURL) {
             this._setBackground(oldBgURL);
+            filteredOldDataset.forEach(([key, value]) => {
+                this.$target[0].dataset[key] = value;
+            });
+            this.$target[0].classList.toggle("o_modified_image_to_save", isModifiedImage);
         }
 
         // TODO should be automatic for all options as equal to the start method
@@ -5796,7 +6324,11 @@ registry.BackgroundImage = SnippetOptionWidget.extend({
             this.$target.addClass('oe_img_bg o_bg_img_center');
         } else {
             delete parts.url;
-            this.$target.removeClass('oe_img_bg o_bg_img_center');
+            this.$target[0].classList.remove(
+                "oe_img_bg",
+                "o_bg_img_center",
+                "o_modified_image_to_save",
+            );
         }
         const combined = backgroundImagePartsToCss(parts);
         this.$target.css('background-image', combined);
@@ -5807,6 +6339,24 @@ registry.BackgroundImage = SnippetOptionWidget.extend({
  * Handles background shapes.
  */
 registry.BackgroundShape = SnippetOptionWidget.extend({
+    /**
+     * @override
+     */
+    onBuilt() {
+        this._patchShape(this.$target[0]);
+        // Flip classes should no longer be used but are still present in some
+        // theme snippets.
+        if (this.$target[0].querySelector('.o_we_flip_x, .o_we_flip_y')) {
+            this._handlePreviewState(false, () => {
+                return {flip: this._getShapeData().flip};
+            });
+        }
+    },
+
+    //--------------------------------------------------------------------------
+    // Public
+    //--------------------------------------------------------------------------
+
     /**
      * @override
      */
@@ -5829,7 +6379,12 @@ registry.BackgroundShape = SnippetOptionWidget.extend({
      */
     shape(previewMode, widgetValue, params) {
         this._handlePreviewState(previewMode, () => {
-            return {shape: widgetValue, colors: this._getImplicitColors(widgetValue, this._getShapeData().colors), flip: []};
+            return {
+                shape: widgetValue,
+                colors: this._getImplicitColors(widgetValue, this._getShapeData().colors),
+                flip: [],
+                animated: params.animated,
+            };
         });
     },
     /**
@@ -5958,7 +6513,7 @@ registry.BackgroundShape = SnippetOptionWidget.extend({
 
         const shapeContainer = target.querySelector(':scope > .o_we_shape');
         if (shapeContainer) {
-            shapeContainer.remove();
+            this._removeShapeEl(shapeContainer);
         }
         if (newContainer) {
             const preShapeLayerElement = this._getLastPreShapeLayerElement();
@@ -6020,7 +6575,7 @@ registry.BackgroundShape = SnippetOptionWidget.extend({
         // Updates/removes the shape container as needed and gives it the
         // correct background shape
         const json = target.dataset.oeShapeData;
-        const {shape, colors, flip = []} = json ? JSON.parse(json) : {};
+        const {shape, colors, flip = [], animated = 'false'} = json ? JSON.parse(json) : {};
         let shapeContainer = target.querySelector(':scope > .o_we_shape');
         if (!shape) {
             return this._insertShapeContainer(null);
@@ -6031,6 +6586,8 @@ registry.BackgroundShape = SnippetOptionWidget.extend({
         }
         // Compat: remove old flip classes as flipping is now done inside the svg
         shapeContainer.classList.remove('o_we_flip_x', 'o_we_flip_y');
+
+        shapeContainer.classList.toggle('o_we_animated', animated === 'true');
 
         if (colors || flip.length) {
             // Custom colors/flip, overwrite shape that is set by the class
@@ -6055,6 +6612,13 @@ registry.BackgroundShape = SnippetOptionWidget.extend({
             this.prevShapeContainer = shapeContainer.cloneNode(true);
             this.prevShape = target.dataset.oeShapeData;
         }
+    },
+    /**
+     * @private
+     * @param {HTMLElement} shapeEl
+     */
+    _removeShapeEl(shapeEl) {
+        shapeEl.remove();
     },
     /**
      * Overwrites shape properties with the specified data.
@@ -6105,7 +6669,7 @@ registry.BackgroundShape = SnippetOptionWidget.extend({
         if (flip.length) {
             searchParams.push(`flip=${flip.sort().join('')}`);
         }
-        return `/web_editor/shape/${shape}.svg?${searchParams.join('&')}`;
+        return `/web_editor/shape/${encodeURIComponent(shape)}.svg?${searchParams.join('&')}`;
     },
     /**
      * Retrieves current shape data from the target's dataset.
@@ -6185,6 +6749,22 @@ registry.BackgroundShape = SnippetOptionWidget.extend({
         return _.pick(colors, defaultKeys);
     },
     /**
+     * @todo remove me in master, needed to patch errors on set-up shapes in
+     * themes.
+     *
+     * @param {HTMLElement} el
+     * @returns {Object}
+     */
+    _patchShape(el) {
+        const shapeData = this._getShapeData(el);
+        // Wrong shape data for s_picture in kea theme
+        if (shapeData.shape === 'web_editor/Origins/Wavy_03') {
+            shapeData.shape = 'web_editor/Wavy/03';
+            el.dataset.oeShapeData = JSON.stringify(shapeData);
+        }
+        return shapeData;
+    },
+    /**
      * Toggles whether there is a shape or not, to be called from bg toggler.
      *
      * @private
@@ -6199,11 +6779,17 @@ registry.BackgroundShape = SnippetOptionWidget.extend({
             const possibleShapes = shapeWidget.getMethodsParams('shape').possibleValues;
             let shapeToSelect;
             if (previousSibling) {
-                const previousShape = this._getShapeData(previousSibling).shape;
+                const shapeData = this._patchShape(previousSibling);
+                const previousShape = shapeData.shape;
                 shapeToSelect = possibleShapes.find((shape, i) => {
                     return possibleShapes[i - 1] === previousShape;
                 });
-            } else {
+            }
+            // If there is no previous sibling, if the previous sibling had the
+            // last shape selected or if the previous shape could not be found
+            // in the possible shapes, default to the first shape. ([0] being no
+            // shapes selected.)
+            if (!shapeToSelect) {
                 shapeToSelect = possibleShapes[1];
             }
             this.trigger_up('snippet_edition_request', {exec: () => {
@@ -6523,7 +7109,7 @@ registry.BackgroundPosition = SnippetOptionWidget.extend({
      * @private
      */
     _onDocumentClicked: function (ev) {
-        if (!$(ev.target).closest('.o_we_background_position_overlay')) {
+        if (!$(ev.target).closest('.o_we_background_position_overlay').length) {
             this._toggleBgOverlay(false);
         }
     },
@@ -6563,7 +7149,9 @@ registry.ColoredLevelBackground = registry.BackgroundToggler.extend({
      * @private
      */
     _markColorLevel: function () {
+        this.options.wysiwyg.odooEditor.observerUnactive('_markColorLevel');
         this.$target.addClass('o_colored_level');
+        this.options.wysiwyg.odooEditor.observerActive('_markColorLevel');
     },
 });
 
@@ -6813,6 +7401,20 @@ registry.SnippetSave = SnippetOptionWidget.extend({
                 ]
             });
         });
+    },
+
+    //--------------------------------------------------------------------------
+    // Private
+    //--------------------------------------------------------------------------
+
+    /**
+     * TODO adapt in master, this option should only be instantiated for real
+     * snippets in the first place.
+     *
+     * @override
+     */
+    _computeVisibility() {
+        return this.$target[0].hasAttribute('data-snippet');
     },
 });
 

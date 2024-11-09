@@ -4,6 +4,7 @@
 from collections import defaultdict
 from odoo import fields, models, _, api
 from odoo.exceptions import UserError
+from odoo.osv import expression
 from odoo.tools.float_utils import float_compare, float_is_zero
 
 
@@ -15,6 +16,32 @@ class MrpProduction(models.Model):
         inverse='_inverse_move_line_raw_ids', compute='_compute_move_line_raw_ids'
     )
     subcontracting_has_been_recorded = fields.Boolean("Has been recorded?", copy=False)
+    incoming_picking = fields.Many2one(related='move_finished_ids.move_dest_ids.picking_id')
+
+    @api.depends('name')
+    def name_get(self):
+        return [
+            (record.id, "%s (%s)" % (record.incoming_picking.name, record.name)) if record.bom_id.type == 'subcontract'
+            else (record.id, record.name) for record in self
+        ]
+
+    @api.model
+    def _name_search(self, name='', args=None, operator='ilike', limit=100, name_get_uid=None):
+        args = list(args or [])
+
+        if name == '' and operator == 'ilike':
+            return self._search(args, limit=limit, access_rights_uid=name_get_uid)
+
+        # search through MO
+        domain = [(self._rec_name, operator, name)]
+
+        # search through transfers
+        picking_rec_name = self.env['stock.picking']._rec_name
+        picking_domain = [('bom_id.type', '=', 'subcontract'), ('incoming_picking.%s' % picking_rec_name, operator, name)]
+        domain = expression.OR([domain, picking_domain])
+
+        args = expression.AND([args, domain])
+        return self._search(args, limit=limit, access_rights_uid=name_get_uid)
 
     @api.depends('move_raw_ids.move_line_ids')
     def _compute_move_line_raw_ids(self):
@@ -41,9 +68,13 @@ class MrpProduction(models.Model):
             raise UserError(_("This MO isn't related to a subcontracted move"))
         if float_is_zero(self.qty_producing, precision_rounding=self.product_uom_id.rounding):
             return {'type': 'ir.actions.act_window_close'}
+        if self.product_tracking != 'none' and not self.lot_producing_id:
+            raise UserError(_('You must enter a serial number for %s') % self.product_id.name)
         for sml in self.move_raw_ids.move_line_ids:
             if sml.tracking != 'none' and not sml.lot_id:
-                raise UserError(_('You must enter a serial number for each line of %s') % sml.product_id.name)
+                raise UserError(_('You must enter a serial number for each line of %s') % sml.product_id.display_name)
+        if self.move_raw_ids and not any(self.move_raw_ids.mapped('quantity_done')):
+            raise UserError(_("You must indicate a non-zero amount consumed for at least one of your components"))
         consumption_issues = self._get_consumption_issues()
         if consumption_issues:
             return self._action_generate_consumption_wizard(consumption_issues)
@@ -62,7 +93,7 @@ class MrpProduction(models.Model):
             backorder._set_qty_producing()
 
             self.product_qty = self.qty_producing
-            action = self._get_subcontract_move()._action_record_components()
+            action = self._get_subcontract_move().filtered(lambda m: m.state not in ('done', 'cancel'))._action_record_components()
             action['res_id'] = backorder.id
             return action
         return {'type': 'ir.actions.act_window_close'}
@@ -75,7 +106,7 @@ class MrpProduction(models.Model):
     def _update_finished_move(self):
         """ After producing, set the move line on the subcontract picking. """
         self.ensure_one()
-        subcontract_move_id = self._get_subcontract_move()
+        subcontract_move_id = self._get_subcontract_move().filtered(lambda m: m.state not in ('done', 'cancel'))
         if subcontract_move_id:
             quantity = self.qty_producing
             if self.lot_producing_id:
@@ -137,9 +168,11 @@ class MrpProduction(models.Model):
         def filter_in(mo):
             if mo.state in ('done', 'cancel'):
                 return False
-            if float_is_zero(mo.qty_producing, precision_rounding=mo.product_uom_id.rounding):
+            if not mo.subcontracting_has_been_recorded:
                 return False
             if not all(line.lot_id for line in mo.move_raw_ids.filtered(lambda sm: sm.has_tracking != 'none').move_line_ids):
+                return False
+            if mo.product_tracking != 'none' and not mo.lot_producing_id:
                 return False
             return True
 

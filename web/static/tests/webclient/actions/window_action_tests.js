@@ -516,6 +516,53 @@ QUnit.module("ActionManager", (hooks) => {
         assert.containsN(webClient, ".o_data_row", 5);
     });
 
+    QUnit.test("A new form view can be reloaded after a failed one", async function (assert) {
+        assert.expect(5);
+        const webClient = await createWebClient({serverData});
+
+        await doAction(webClient, 3);
+        await cpHelpers.switchView(webClient.el, "list");
+        assert.containsOnce(webClient, ".o_list_view", "The list view should be displayed");
+
+        // Click on the first record
+        await testUtils.dom.click($(webClient.el).find(".o_list_view .o_data_row:first"));
+        await legacyExtraNextTick();
+        assert.containsOnce(webClient, ".o_form_view", "The form view should be displayed");
+
+        // Delete the current record
+        await testUtils.controlPanel.toggleActionMenu(document);
+        await testUtils.controlPanel.toggleMenuItem(document, "Delete");
+        assert.ok($('.modal').length, 'a confirm modal should be displayed');
+        await testUtils.dom.click($('.modal-footer button.btn-primary'));
+        await legacyExtraNextTick();
+
+        // The form view is automatically switched to the next record
+        // Go back to the previous (now deleted) record
+        webClient.env.bus.trigger("test:hashchange", {
+            model: "partner",
+            id: 1,
+            action: 3,
+            view_type: "form",
+        });
+        await testUtils.nextTick();
+        await legacyExtraNextTick();
+
+        // Go back to the list view
+        webClient.env.bus.trigger("test:hashchange", {
+            model: "partner",
+            action: 3,
+            view_type: "list",
+        });
+        await testUtils.nextTick();
+        await legacyExtraNextTick();
+        assert.containsOnce(webClient, ".o_list_view", "should still display the list view");
+
+        await testUtils.dom.click($(webClient.el).find(".o_list_view .o_data_row:first"));
+        await legacyExtraNextTick();
+        assert.containsOnce(webClient, ".o_form_view",
+            "The form view should still load after a previous failed update | reload");
+    });
+
     QUnit.test("there is no flickering when switching between views", async function (assert) {
         assert.expect(20);
         let def;
@@ -1329,6 +1376,26 @@ QUnit.module("ActionManager", (hooks) => {
         }
     );
 
+    QUnit.test(
+        "form views are restored with the correct id in its url when coming back in breadcrumbs",
+        async function (assert) {
+            assert.expect(3);
+            const webClient = await createWebClient({ serverData });
+            await doAction(webClient, 3);
+            // open a record in form view
+            await testUtils.dom.click($(webClient.el).find(".o_list_view .o_data_row:first"));
+            await legacyExtraNextTick();
+            assert.strictEqual(webClient.env.services.router.current.hash.id, 1);
+            // do some other action
+            await doAction(webClient, 4);
+            assert.notOk(webClient.env.services.router.current.hash.id);
+            // go back to form view
+            await testUtils.dom.clickLast($(webClient.el).find(".o_control_panel .breadcrumb a"));
+            await legacyExtraNextTick();
+            assert.strictEqual(webClient.env.services.router.current.hash.id, 1);
+        }
+    );
+
     QUnit.test("honor group_by specified in actions context", async function (assert) {
         assert.expect(5);
         serverData.actions[3].context = "{'group_by': 'bar'}";
@@ -1565,6 +1632,40 @@ QUnit.module("ActionManager", (hooks) => {
         }
     );
 
+    QUnit.test("pivot view with default favorite and context.active_id", async function (assert) {
+        // note: we use a pivot view because we need a owl view
+        assert.expect(4);
+
+        serverData.views["partner,false,pivot"] = "<pivot/>";
+        serverData.actions[3].views = [[false, "pivot"]];
+        serverData.actions[3].context = { active_id: 4, active_ids: [4], active_model: "whatever" };
+        serverData.models.partner.filters = [
+            {
+                name: "favorite filter",
+                id: 5,
+                context: "{}",
+                sort: "[]",
+                domain: '[("bar", "=", 1)]',
+                is_default: true,
+            },
+        ];
+        registry.category("services").add("user", makeFakeUserService());
+        const mockRPC = (route, args) => {
+            if (args.method === "read_group") {
+                assert.deepEqual(args.kwargs.domain, [["bar", "=", 1]]);
+            }
+        };
+        const webClient = await createWebClient({ serverData, mockRPC });
+        await doAction(webClient, 3);
+
+        assert.containsOnce(webClient.el, ".o_pivot_view");
+        assert.containsOnce(webClient.el, ".o_searchview .o_searchview_facet");
+        assert.strictEqual(
+            webClient.el.querySelector(".o_facet_value").innerText,
+            "favorite filter"
+        );
+    });
+
     QUnit.test(
         "search menus are still available when switching between actions",
         async function (assert) {
@@ -1592,14 +1693,7 @@ QUnit.module("ActionManager", (hooks) => {
 
     QUnit.test("current act_window action is stored in session_storage", async function (assert) {
         assert.expect(1);
-        const expectedAction = {
-            ...serverData.actions[3],
-            context: {
-                lang: "en",
-                uid: 7,
-                tz: "taht",
-            },
-        };
+        const expectedAction = serverData.actions[3];
         patchWithCleanup(browser, {
             sessionStorage: Object.assign(Object.create(sessionStorage), {
                 setItem(k, value) {
@@ -1614,52 +1708,6 @@ QUnit.module("ActionManager", (hooks) => {
         const webClient = await createWebClient({ serverData });
         await doAction(webClient, 3);
     });
-
-    QUnit.test(
-        "store evaluated context of current action in session_storage",
-        async function (assert) {
-            // this test ensures that we don't store stringified instances of
-            // CompoundContext in the session_storage, as they would be meaningless
-            // once restored
-            assert.expect(1);
-            const expectedAction = {
-                ...serverData.actions[4],
-                context: {
-                    lang: "en",
-                    uid: 7,
-                    tz: "taht",
-                    active_model: "partner",
-                    active_id: 1,
-                    active_ids: [1],
-                },
-            };
-            let checkSessionStorage = false;
-            patchWithCleanup(browser, {
-                sessionStorage: Object.assign(Object.create(sessionStorage), {
-                    setItem(k, value) {
-                        if (checkSessionStorage) {
-                            assert.strictEqual(
-                                value,
-                                JSON.stringify(expectedAction),
-                                "should store the executed action in the sessionStorage"
-                            );
-                        }
-                    },
-                }),
-            });
-            const webClient = await createWebClient({ serverData });
-            // execute an action and open a record in form view
-            await doAction(webClient, 3);
-            await testUtils.dom.click($(webClient.el).find(".o_list_view .o_data_row:first"));
-            await legacyExtraNextTick();
-            // click on 'Execute action' button (it executes an action with a CompoundContext as context)
-            checkSessionStorage = true;
-            await testUtils.dom.click(
-                $(webClient.el).find(".o_form_view button:contains(Execute action)")
-            );
-            await legacyExtraNextTick();
-        }
-    );
 
     QUnit.test("destroy action with lazy loaded controller", async function (assert) {
         assert.expect(6);
@@ -2435,5 +2483,48 @@ QUnit.module("ActionManager", (hooks) => {
         assert.containsOnce(webClient, ".o_kanban_view");
 
         assert.verifySteps(["/web/dataset/search_read"]);
+    });
+
+    QUnit.test("pushState also changes the title of the tab", async (assert) => {
+        assert.expect(3);
+
+        const webClient = await createWebClient({ serverData });
+        await doAction(webClient, 3); // list view
+        const titleService = webClient.env.services.title;
+        assert.strictEqual(titleService.current, '{"zopenerp":"Odoo","action":"Partners"}');
+        await click(webClient.el.querySelector(".o_data_row"));
+        await legacyExtraNextTick();
+        assert.strictEqual(titleService.current, '{"zopenerp":"Odoo","action":"First record"}');
+        await click(webClient.el.querySelector(".o_pager_next"));
+        assert.strictEqual(titleService.current, '{"zopenerp":"Odoo","action":"Second record"}');
+    });
+
+    QUnit.test("action part of title is updated when an action is mounted", async (assert) => {
+        // use a PivotView because we need a view converted to wowl
+        // those two lines can be removed once the list view is converted to wowl
+        serverData.actions[3].views.unshift([false, "pivot"]);
+        serverData.views["partner,false,pivot"] = "<pivot/>";
+        serviceRegistry.add("user", makeFakeUserService());
+
+        const webClient = await createWebClient({ serverData });
+        await doAction(webClient, 3);
+        const titleService = webClient.env.services.title;
+        assert.strictEqual(titleService.current, '{"zopenerp":"Odoo","action":"Partners"}');
+    });
+
+    QUnit.test("action group_by of type string", async function (assert) {
+        assert.expect(2);
+        serverData.views["partner,false,pivot"] = `<pivot/>`;
+        registry.category("services").add("user", makeFakeUserService());
+        const webClient = await createWebClient({ serverData });
+        await doAction(webClient, {
+            name: "Partner",
+            res_model: "partner",
+            type: "ir.actions.act_window",
+            views: [[3, "pivot"]],
+            context: { group_by: "foo" },
+        });
+        assert.containsOnce(webClient, ".o_pivot_view");
+        assert.containsN(webClient, ".o_pivot_view tbody th", 6);
     });
 });

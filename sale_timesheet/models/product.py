@@ -35,6 +35,9 @@ class ProductTemplate(models.Model):
     def _compute_service_upsell_threshold_ratio(self):
         product_uom_hour = self.env.ref('uom.product_uom_hour')
         for record in self:
+            if not record.uom_id:
+                record.service_upsell_threshold_ratio = False
+                continue
             record.service_upsell_threshold_ratio = f"1 {record.uom_id.name} = {product_uom_hour.factor / record.uom_id.factor:.2f} Hours"
 
     def _compute_visible_expense_policy(self):
@@ -138,7 +141,7 @@ class ProductTemplate(models.Model):
 
     def write(self, vals):
         # timesheet product can't be archived
-        test_mode = getattr(threading.currentThread(), 'testing', False) or self.env.registry.in_test_mode()
+        test_mode = getattr(threading.current_thread(), 'testing', False) or self.env.registry.in_test_mode()
         if not test_mode and 'active' in vals and not vals['active']:
             time_product = self.env.ref('sale_timesheet.time_product')
             if time_product.product_tmpl_id in self:
@@ -154,9 +157,14 @@ class ProductProduct(models.Model):
         self.ensure_one()
         return self.type == 'service' and self.service_policy == 'delivered_timesheet'
 
+    def _inverse_service_policy(self):
+        for product in self:
+            if product.service_policy:
+                product.invoice_policy, product.service_type = SERVICE_TO_GENERAL.get(product.service_policy, (False, False))
+
     @api.onchange('service_policy')
     def _onchange_service_policy(self):
-        self.product_tmpl_id._inverse_service_policy()
+        self._inverse_service_policy()
         vals = self.product_tmpl_id._get_onchange_service_policy_updates(self.service_tracking,
                                                                         self.service_policy,
                                                                         self.project_id,
@@ -172,7 +180,7 @@ class ProductProduct(models.Model):
 
     def write(self, vals):
         # timesheet product can't be archived
-        test_mode = getattr(threading.currentThread(), 'testing', False) or self.env.registry.in_test_mode()
+        test_mode = getattr(threading.current_thread(), 'testing', False) or self.env.registry.in_test_mode()
         if not test_mode and 'active' in vals and not vals['active']:
             time_product = self.env.ref('sale_timesheet.time_product')
             if time_product in self:

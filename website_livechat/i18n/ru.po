@@ -3,19 +3,24 @@
 # 	* website_livechat
 # 
 # Translators:
-# Максим Дронь <dronmax@gmail.com>, 2019
-# Collex100, 2019
-# Vasiliy Korobatov <korobatov@gmail.com>, 2019
-# Martin Trigaux, 2019
+# Максим Дронь <dronmax@gmail.com>, 2021
+# Martin Trigaux, 2021
+# Collex100, 2021
+# Ivan Kropotkin <yelizariev@itpp.dev>, 2021
+# Vasiliy Korobatov <korobatov@gmail.com>, 2021
+# ILMIR <karamov@it-projects.info>, 2021
+# Irina Fedulova <istartlin@gmail.com>, 2021
+# Сергей Шебанин <sergey@shebanin.ru>, 2022
+# Wil Odoo, 2024
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~12.5\n"
+"Project-Id-Version: Odoo Server saas~14.4\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-09-23 11:33+0000\n"
-"PO-Revision-Date: 2019-08-26 09:16+0000\n"
-"Last-Translator: Martin Trigaux, 2019\n"
-"Language-Team: Russian (https://www.transifex.com/odoo/teams/41243/ru/)\n"
+"POT-Creation-Date: 2021-07-12 07:50+0000\n"
+"PO-Revision-Date: 2021-09-14 12:28+0000\n"
+"Last-Translator: Wil Odoo, 2024\n"
+"Language-Team: Russian (https://app.transifex.com/odoo/teams/41243/ru/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
@@ -25,19 +30,33 @@ msgstr ""
 #. module: website_livechat
 #: model:ir.model.fields,field_description:website_livechat.field_website_visitor__session_count
 msgid "# Sessions"
+msgstr "# Сессии"
+
+#. module: website_livechat
+#: code:addons/website_livechat/models/mail_channel.py:0
+#, python-format
+msgid "%s has left the conversation."
 msgstr ""
 
 #. module: website_livechat
-#: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_kanban
-msgid "<span class=\"fa fa-comments mr-2\"/>Speaking With"
+#: code:addons/website_livechat/models/mail_channel.py:0
+#, python-format
+msgid ""
+"%s has started a conversation with %s. \n"
+"                        The chat request has been canceled."
 msgstr ""
+
+#. module: website_livechat
+#: model_terms:ir.ui.view,arch_db:website_livechat.channel_page
+msgid "<small>%</small>"
+msgstr "<small>%</small>"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.res_config_settings_view_form
 msgid ""
 "<span class=\"o_form_label\">Live Chat</span>\n"
 "                        <span class=\"fa fa-lg fa-globe\" title=\"Values set here are website-specific.\" groups=\"website.group_multi_website\"/>"
-msgstr ""
+msgstr "<span class=\"o_form_label\">живой чат</span>"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_page
@@ -50,14 +69,21 @@ msgid "Available"
 msgstr "Доступно"
 
 #. module: website_livechat
+#. openerp-web
+#: code:addons/website_livechat/static/src/components/visitor_banner/visitor_banner.xml:0
+#, python-format
+msgid "Avatar"
+msgstr "Аватар"
+
+#. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_page
 msgid "Bad"
 msgstr "Плохо"
 
 #. module: website_livechat
-#: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_search
-msgid "Busy"
-msgstr "Занят"
+#: model:ir.model.fields,field_description:website_livechat.field_im_livechat_channel__can_publish
+msgid "Can Publish"
+msgstr "Может публиковать"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.res_config_settings_view_form
@@ -66,13 +92,20 @@ msgstr "Канал"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_kanban
+#: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_tree
 msgid "Chat"
 msgstr "Чат"
 
 #. module: website_livechat
+#: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_form
+#: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_kanban
+msgid "Chats"
+msgstr "Чаты"
+
+#. module: website_livechat
 #: model:ir.model,name:website_livechat.model_res_config_settings
 msgid "Config Settings"
-msgstr "Настройки конфигурации"
+msgstr "Конфигурационные настройки"
 
 #. module: website_livechat
 #: model:ir.model.fields,help:website_livechat.field_im_livechat_channel__website_description
@@ -82,12 +115,12 @@ msgstr "Описание канала, отображается на стран�
 #. module: website_livechat
 #: model:ir.model,name:website_livechat.model_mail_channel
 msgid "Discussion Channel"
-msgstr ""
+msgstr "Канал обсуждения"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_page
 msgid "Great"
-msgstr ""
+msgstr "Отлично"
 
 #. module: website_livechat
 #: model:ir.model,name:website_livechat.model_ir_http
@@ -97,17 +130,37 @@ msgstr "Маршрутизация HTTP"
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_page
 msgid "Happy face"
-msgstr ""
+msgstr "Счастливое лицо"
 
 #. module: website_livechat
-#: model:ir.model.fields,field_description:website_livechat.field_mail_channel__livechat_active
-msgid "Is livechat ongoing?"
-msgstr ""
+#. openerp-web
+#: code:addons/website_livechat/static/src/components/visitor_banner/visitor_banner.xml:0
+#, python-format
+msgid "History"
+msgstr "История"
 
 #. module: website_livechat
-#: model:website.menu,name:website_livechat.menu_livechat
+#: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_search
+msgid "In Conversation"
+msgstr "В беседе"
+
+#. module: website_livechat
+#: model:ir.model.fields,field_description:website_livechat.field_im_livechat_channel__is_published
+msgid "Is Published"
+msgstr "Опубликовано"
+
+#. module: website_livechat
+#. openerp-web
+#: code:addons/website_livechat/static/src/components/visitor_banner/visitor_banner.xml:0
+#, python-format
+msgid "Lang"
+msgstr "Язык"
+
+#. module: website_livechat
+#: code:addons/website_livechat/models/website.py:0
+#, python-format
 msgid "Live Support"
-msgstr "Онлайн поддержка"
+msgstr "Онлайн-поддержка"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.res_config_settings_view_form
@@ -125,13 +178,6 @@ msgid "Livechat Support Channels"
 msgstr "Каналы поддержки Живого чата"
 
 #. module: website_livechat
-#: model:ir.model.fields,help:website_livechat.field_mail_channel__livechat_active
-msgid ""
-"Livechat session is not considered as active if the visitor left the "
-"conversation."
-msgstr ""
-
-#. module: website_livechat
 #. openerp-web
 #: code:addons/website_livechat/static/src/js/website_livechat.editor.js:0
 #, python-format
@@ -141,7 +187,7 @@ msgstr "Название"
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_page
 msgid "Neutral face"
-msgstr ""
+msgstr "Нейтральное лицо"
 
 #. module: website_livechat
 #. openerp-web
@@ -155,18 +201,12 @@ msgstr "Новый канал"
 #, python-format
 msgid "No Livechat Channel allows you to send a chat request for website %s."
 msgstr ""
+"Ни один канал Livechat не позволяет отправить запрос на чат для сайта %s."
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_page
 msgid "Not rated yet"
-msgstr ""
-
-#. module: website_livechat
-#. openerp-web
-#: code:addons/website_livechat/static/src/xml/thread.xml:0
-#, python-format
-msgid "Offline"
-msgstr "Офлайн"
+msgstr "Еще не оценено"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_page
@@ -175,15 +215,20 @@ msgstr "ОК"
 
 #. module: website_livechat
 #. openerp-web
-#: code:addons/website_livechat/static/src/xml/thread.xml:0
+#: code:addons/website_livechat/static/src/components/visitor_banner/visitor_banner.xml:0
 #, python-format
 msgid "Online"
 msgstr "Онлайн"
 
 #. module: website_livechat
+#: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_kanban
+msgid "Operator Avatar"
+msgstr "Аватар оператора"
+
+#. module: website_livechat
 #: model:ir.model.fields,field_description:website_livechat.field_website_visitor__livechat_operator_name
 msgid "Operator Name"
-msgstr ""
+msgstr "Имя оператора"
 
 #. module: website_livechat
 #: code:addons/website_livechat/models/website_visitor.py:0
@@ -192,37 +237,33 @@ msgid ""
 "Recipients are not available. Please refresh the page to get latest visitors"
 " status."
 msgstr ""
+"Получатели недоступны. Пожалуйста, обновите страницу, чтобы получить "
+"последние данные о посетителях."
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_page
 msgid "Sad face"
-msgstr ""
+msgstr "Грустное лицо"
 
 #. module: website_livechat
 #: model:ir.actions.server,name:website_livechat.website_livechat_send_chat_request_action_server
 msgid "Send Chat Requests"
-msgstr ""
+msgstr "Отправлять запросы в чат"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_form
-#: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_tree
 msgid "Send chat request"
-msgstr ""
-
-#. module: website_livechat
-#: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_form
-msgid "Sessions"
-msgstr "Сессии"
+msgstr "Отправить запрос на чат"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.website_visitor_view_kanban
 msgid "Speaking With"
-msgstr ""
+msgstr "Разговор с"
 
 #. module: website_livechat
 #: model:ir.model.fields,field_description:website_livechat.field_website_visitor__livechat_operator_id
 msgid "Speaking with"
-msgstr ""
+msgstr "Разговор с"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_page
@@ -240,20 +281,30 @@ msgid "The Team"
 msgstr "Команда"
 
 #. module: website_livechat
+#: model:ir.model.fields,help:website_livechat.field_im_livechat_channel__website_url
+msgid "The full URL to access the document through the website."
+msgstr "Полный URL, чтобы получить доступ к документу через веб-сайт."
+
+#. module: website_livechat
 #: code:addons/website_livechat/models/mail_channel.py:0
 #, python-format
 msgid "The visitor"
-msgstr ""
+msgstr "Посетитель"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_list_page
-msgid "There is no public livechat channel to show."
-msgstr "Нет публичного канала Живого чата, для показа."
+msgid "There are no public livechat channels to show."
+msgstr "Публичные каналы livechat не отображаются."
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_page
-msgid "There is no rating for this channel for now."
-msgstr ""
+msgid "There are no ratings for this channel for now."
+msgstr "Пока что для этого канала нет рейтингов."
+
+#. module: website_livechat
+#: model:ir.model.fields,field_description:website_livechat.field_im_livechat_channel__website_published
+msgid "Visible on current website"
+msgstr "Видимый на текущем сайте"
 
 #. module: website_livechat
 #: model:ir.model.fields,field_description:website_livechat.field_mail_channel__livechat_visitor_id
@@ -261,22 +312,32 @@ msgid "Visitor"
 msgstr "Посетитель"
 
 #. module: website_livechat
+#. openerp-web
+#: code:addons/website_livechat/static/src/components/visitor_banner/visitor_banner.xml:0
+#, python-format
+msgid "Visitor is online"
+msgstr ""
+
+#. module: website_livechat
 #: model:ir.actions.act_window,name:website_livechat.website_visitor_livechat_session_action
 msgid "Visitor's Sessions"
-msgstr ""
+msgstr "Сеансы для посетителей"
 
 #. module: website_livechat
 #: model:ir.model.fields,field_description:website_livechat.field_website_visitor__mail_channel_ids
 msgid "Visitor's livechat channels"
-msgstr ""
+msgstr "Каналы livechat для посетителей"
 
 #. module: website_livechat
 #: model:ir.ui.menu,name:website_livechat.website_livechat_visitor_menu
 msgid "Visitors"
-msgstr ""
+msgstr "Посетители"
 
 #. module: website_livechat
+#. openerp-web
+#: code:addons/website_livechat/static/src/components/visitor_banner/visitor_banner.xml:0
 #: model:ir.model,name:website_livechat.model_website
+#, python-format
 msgid "Website"
 msgstr "Вебсайт"
 
@@ -291,9 +352,16 @@ msgid "Website Live Chat Channel"
 msgstr "Веб-сайт Живой чат канал"
 
 #. module: website_livechat
+#: model:ir.model.fields,field_description:website_livechat.field_im_livechat_channel__website_url
+msgid "Website URL"
+msgstr "URL Веб-сайта"
+
+#. module: website_livechat
+#: code:addons/website_livechat/tests/test_livechat_basic_flow.py:0
 #: model:ir.model,name:website_livechat.model_website_visitor
+#, python-format
 msgid "Website Visitor"
-msgstr ""
+msgstr "Посетитель веб-сайта"
 
 #. module: website_livechat
 #: model:ir.model.fields,field_description:website_livechat.field_im_livechat_channel__website_description
@@ -303,15 +371,8 @@ msgstr "Описание веб-сайта"
 #. module: website_livechat
 #: code:addons/website_livechat/models/mail_channel.py:0
 #, python-format
-msgid "has left the conversation."
-msgstr ""
-
-#. module: website_livechat
-#: code:addons/website_livechat/models/mail_channel.py:0
-#, python-format
-msgid ""
-"has started a conversation with %s. The chat request has been canceled."
-msgstr ""
+msgid "an operator"
+msgstr "оператор"
 
 #. module: website_livechat
 #: model_terms:ir.ui.view,arch_db:website_livechat.channel_page

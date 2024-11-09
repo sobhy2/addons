@@ -58,9 +58,17 @@ class AuthorizeAPI:
 
         messages = response.get('messages')
         if messages and messages.get('resultCode') == 'Error':
+            err_msg = messages.get('message')[0].get('text', '')
+
+            tx_errors = response.get('transactionResponse', {}).get('errors')
+            if tx_errors:
+                if err_msg:
+                    err_msg += '\n'
+                err_msg += '\n'.join([e.get('errorText', '') for e in tx_errors])
+
             return {
                 'err_code': messages.get('message')[0].get('code'),
-                'err_msg': messages.get('message')[0].get('text')
+                'err_msg': err_msg,
             }
 
         return response
@@ -148,12 +156,16 @@ class AuthorizeAPI:
         # but is not allowed for transactions with a payment.token.
         bill_to = {}
         if 'profile' not in tx_data:
-            split_name = payment_utils.split_partner_name(tx.partner_name)
+            if tx.partner_id.is_company:
+                split_name = '', tx.partner_name
+            else:
+                split_name = payment_utils.split_partner_name(tx.partner_name)
+            # max lengths are defined by the Authorize API
             bill_to = {
                 'billTo': {
-                    'firstName': '' if tx.partner_id.is_company else split_name[0],
-                    'lastName': split_name[1],  # lastName is always required
-                    'company': tx.partner_name if tx.partner_id.is_company else '',
+                    'firstName': split_name[0][:50],
+                    'lastName': split_name[1][:50],  # lastName is always required
+                    'company': tx.partner_name[:50] if tx.partner_id.is_company else '',
                     'address': tx.partner_address,
                     'city': tx.partner_city,
                     'state': tx.partner_state_id.name or '',

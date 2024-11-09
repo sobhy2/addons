@@ -31,7 +31,6 @@ class FleetVehicle(models.Model):
     active = fields.Boolean('Active', default=True, tracking=True)
     manager_id = fields.Many2one(
         'res.users', 'Fleet Manager',
-        compute='_compute_manager_id', store=True, readonly=False,
         domain=lambda self: [('groups_id', 'in', self.env.ref('fleet.fleet_group_manager').id)],
     )
     company_id = fields.Many2one(
@@ -86,7 +85,7 @@ class FleetVehicle(models.Model):
     horsepower_tax = fields.Float('Horsepower Taxation', compute='_compute_model_fields', store=True, readonly=False)
     power = fields.Integer('Power', help='Power in kW of the vehicle', compute='_compute_model_fields', store=True, readonly=False)
     co2 = fields.Float('CO2 Emissions', help='CO2 emissions of the vehicle', compute='_compute_model_fields', store=True, readonly=False)
-    co2_standard = fields.Char(compute='_compute_model_fields', store=True, readonly=False)
+    co2_standard = fields.Char('CO2 Standard', compute='_compute_model_fields', store=True, readonly=False)
     image_128 = fields.Image(related='model_id.image_128', readonly=True)
     contract_renewal_due_soon = fields.Boolean(compute='_compute_contract_reminder', search='_search_contract_renewal_due_soon',
         string='Has Contracts to renew')
@@ -216,7 +215,7 @@ class FleetVehicle(models.Model):
             ('expiration_date', '>', today),
             ('expiration_date', '<', limit_date),
             ('state', 'in', ['open', 'expired'])
-        ]).mapped('id')
+        ]).mapped('vehicle_id').ids
         res.append(('id', search_operator, res_ids))
         return res
 
@@ -232,15 +231,26 @@ class FleetVehicle(models.Model):
             ('expiration_date', '!=', False),
             ('expiration_date', '<', today),
             ('state', 'in', ['open', 'expired'])
-        ]).mapped('id')
+        ]).mapped('vehicle_id').ids
         res.append(('id', search_operator, res_ids))
         return res
 
+    def _clean_vals_internal_user(self, vals):
+        # Fleet administrator may not have rights to write on partner
+        # related fields when the driver_id is a res.user.
+        # This trick is used to prevent access right error.
+        su_vals = {}
+        if self.env.su:
+            return su_vals
+        if 'plan_to_change_car' in vals:
+            su_vals['plan_to_change_car'] = vals.pop('plan_to_change_car')
+        if 'plan_to_change_bike' in vals:
+            su_vals['plan_to_change_bike'] = vals.pop('plan_to_change_bike')
+        return su_vals
+
     @api.model
     def create(self, vals):
-        # Fleet administrator may not have rights to create the plan_to_change_car value when the driver_id is a res.user
-        # This trick is used to prevent access right error.
-        ptc_value = 'plan_to_change_car' in vals.keys() and {'plan_to_change_car': vals.pop('plan_to_change_car')}
+        ptc_value = self._clean_vals_internal_user(vals)
         res = super(FleetVehicle, self).create(vals)
         if ptc_value:
             res.sudo().write(ptc_value)
@@ -278,6 +288,13 @@ class FleetVehicle(models.Model):
                 if self.vehicle_type == 'car':
                     future_driver.sudo().write({'plan_to_change_car': True})
 
+        if 'active' in vals and not vals['active']:
+            self.env['fleet.vehicle.log.contract'].search([('vehicle_id', 'in', self.ids)]).active = False
+            self.env['fleet.vehicle.log.services'].search([('vehicle_id', 'in', self.ids)]).active = False
+
+        su_vals = self._clean_vals_internal_user(vals)
+        if su_vals:
+            self.sudo().write(su_vals)
         res = super(FleetVehicle, self).write(vals)
         return res
 
@@ -296,9 +313,9 @@ class FleetVehicle(models.Model):
             )
 
     def action_accept_driver_change(self):
-        # Find all the vehicles for which the driver is the future_driver_id
+        # Find all the vehicles of the same type for which the driver is the future_driver_id
         # remove their driver_id and close their history using current date
-        vehicles = self.search([('driver_id', 'in', self.mapped('future_driver_id').ids)])
+        vehicles = self.search([('driver_id', 'in', self.mapped('future_driver_id').ids), ('vehicle_type', '=', self.vehicle_type)])
         vehicles.write({'driver_id': False})
 
         for vehicle in self:
@@ -308,11 +325,6 @@ class FleetVehicle(models.Model):
                 vehicle.future_driver_id.sudo().write({'plan_to_change_car': False})
             vehicle.driver_id = vehicle.future_driver_id
             vehicle.future_driver_id = False
-
-    def toggle_active(self):
-        self.env['fleet.vehicle.log.contract'].with_context(active_test=False).search([('vehicle_id', 'in', self.ids)]).toggle_active()
-        self.env['fleet.vehicle.log.services'].with_context(active_test=False).search([('vehicle_id', 'in', self.ids)]).toggle_active()
-        super(FleetVehicle, self).toggle_active()
 
     @api.model
     def _read_group_stage_ids(self, stages, domain, order):
@@ -363,7 +375,7 @@ class FleetVehicle(models.Model):
 
     def _track_subtype(self, init_values):
         self.ensure_one()
-        if 'driver_id' in init_values:
+        if 'driver_id' in init_values or 'future_driver_id' in init_values:
             return self.env.ref('fleet.mt_fleet_driver_updated')
         return super(FleetVehicle, self)._track_subtype(init_values)
 

@@ -125,11 +125,20 @@ export function makeLegacySessionService(legacyEnv, session) {
             function mapContext() {
                 return Object.assign({}, env.services.user.context);
             }
+            function setContext(update) {
+                env.services.user.updateContext(update);
+            }
             Object.defineProperty(legacyEnv.session, "userContext", {
                 get: () => mapContext(),
+                set: (update) => {
+                    setContext(update);
+                },
             });
             Object.defineProperty(session, "user_context", {
                 get: () => mapContext(),
+                set: (update) => {
+                    setContext(update);
+                },
             });
         },
     };
@@ -141,6 +150,14 @@ export function mapLegacyEnvToWowlEnv(legacyEnv, wowlEnv) {
         let rejection;
         const prom = new Promise((resolve, reject) => {
             const [route, params, settings = {}] = args;
+            // Add user context in kwargs if there are kwargs
+            if (params && params.kwargs) {
+                params.kwargs.context = Object.assign(
+                    {},
+                    legacyEnv.session.user_context,
+                    params.kwargs.context,
+                );
+            }
             const jsonrpc = wowlEnv.services.rpc(route, params, {
                 silent: settings.shadow,
                 xhr: settings.xhr,
@@ -174,6 +191,10 @@ export function mapLegacyEnvToWowlEnv(legacyEnv, wowlEnv) {
     // map WebClientReady
     wowlEnv.bus.on("WEB_CLIENT_READY", null, () => {
         legacyEnv.bus.trigger("web_client_ready");
+    });
+
+    wowlEnv.bus.on("SCROLLER:ANCHOR_LINK_CLICKED", null, (payload) => {
+        legacyEnv.bus.trigger("SCROLLER:ANCHOR_LINK_CLICKED", payload);
     });
 
     legacyEnv.bus.on("clear_cache", null, () => {
@@ -211,7 +232,6 @@ export function makeLegacyNotificationService(legacyEnv) {
                 type,
                 className,
                 onClose,
-                messageIsHtml,
             }) {
                 if (subtitle) {
                     title = [title, subtitle].filter(Boolean).join(" ");
@@ -230,14 +250,14 @@ export function makeLegacyNotificationService(legacyEnv) {
                     };
                 });
 
-                const removeFn = env.services.notification.add(message, {
+                const removeFn = env.services.notification.add(_.escape(message), {
                     sticky,
                     title,
                     type,
                     className,
                     onClose,
                     buttons,
-                    messageIsHtml,
+                    messageIsHtml: true,
                 });
                 const id = ++notifId;
                 idsToRemoveFn[id] = removeFn;

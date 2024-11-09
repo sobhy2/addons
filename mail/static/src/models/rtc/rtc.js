@@ -152,7 +152,7 @@ function factory(dependencies) {
         }
 
         /**
-         * @param {String} sender id of the session that sent the notification
+         * @param {number|String} sender id of the session that sent the notification
          * @param {String} content JSON
          */
         async handleNotification(sender, content) {
@@ -171,18 +171,18 @@ function factory(dependencies) {
             switch (event) {
                 case "offer":
                     this._addLogEntry(sender, `received notification: ${event}`, { step: 'received offer' });
-                    await this._handleRtcTransactionOffer(sender, payload);
+                    await this._handleRtcTransactionOffer(rtcSession.peerToken, payload);
                     break;
                 case "answer":
                     this._addLogEntry(sender, `received notification: ${event}`, { step: 'received answer' });
-                    await this._handleRtcTransactionAnswer(sender, payload);
+                    await this._handleRtcTransactionAnswer(rtcSession.peerToken, payload);
                     break;
                 case "ice-candidate":
-                    await this._handleRtcTransactionICECandidate(sender, payload);
+                    await this._handleRtcTransactionICECandidate(rtcSession.peerToken, payload);
                     break;
                 case "disconnect":
                     this._addLogEntry(sender, `received notification: ${event}`, { step: ' peer cleanly disconnected ' });
-                    this._removePeer(sender);
+                    this._removePeer(rtcSession.peerToken);
                     break;
                 case 'trackChange':
                     this._handleTrackChange(rtcSession, payload);
@@ -347,6 +347,7 @@ function factory(dependencies) {
             this._disconnectAudioMonitor && this._disconnectAudioMonitor();
             if (this.messaging.userSetting.usePushToTalk || !this.channel || !this.audioTrack) {
                 this.currentRtcSession.update({ isTalking: false });
+                await this._updateLocalAudioTrackEnabledState();
                 return;
             }
             try {
@@ -368,6 +369,7 @@ function factory(dependencies) {
                 });
                 this.currentRtcSession.update({ isTalking: true });
             }
+            await this._updateLocalAudioTrackEnabledState();
         }
 
         //----------------------------------------------------------------------
@@ -383,8 +385,8 @@ function factory(dependencies) {
          * @param {String} [param2.step] current step of the flow
          * @param {String} [param2.state] current state of the connection
          */
-        _addLogEntry(token, entry, { error, step, state } = {}) {
-            if (!this.env.isDebug()) {
+        _addLogEntry(token, entry, { error, step, state, ...data } = {}) {
+            if (!this.modelManager.isDebug) {
                 return;
             }
             if (!(token in this.logs)) {
@@ -399,6 +401,7 @@ function factory(dependencies) {
                     stack: error.stack && error.stack.split('\n'),
                 },
                 trace: trace.split('\n'),
+                ...data,
             });
             if (step) {
                 this.logs[token].step = step;
@@ -548,7 +551,7 @@ function factory(dependencies) {
          */
         async _handleRtcTransactionAnswer(fromToken, { sdp }) {
             const peerConnection = this._peerConnections[fromToken];
-            if (!peerConnection || peerConnection.connectionState === 'closed' || peerConnection.signalingState === 'stable') {
+            if (!peerConnection || this.invalidIceConnectionStates.has(peerConnection.iceConnectionState) || peerConnection.signalingState === 'stable') {
                 return;
             }
             if (peerConnection.signalingState === 'have-remote-offer') {
@@ -566,13 +569,13 @@ function factory(dependencies) {
 
         /**
          * @private
-         * @param {String} token
+         * @param {String} fromToken
          * @param {Object} param1
          * @param {Object} param1.candidate RTCIceCandidateInit
          */
         async _handleRtcTransactionICECandidate(fromToken, { candidate }) {
             const peerConnection = this._peerConnections[fromToken];
-            if (!peerConnection || peerConnection.connectionState === 'closed') {
+            if (!peerConnection || this.invalidIceConnectionStates.has(peerConnection.iceConnectionState)) {
                 return;
             }
             const rtcIceCandidate = new window.RTCIceCandidate(candidate);
@@ -593,7 +596,7 @@ function factory(dependencies) {
         async _handleRtcTransactionOffer(fromToken, { sdp }) {
             const peerConnection = this._peerConnections[fromToken] || this._createPeerConnection(fromToken);
 
-            if (!peerConnection || peerConnection.connectionState === 'closed') {
+            if (!peerConnection || this.invalidIceConnectionStates.has(peerConnection.iceConnectionState)) {
                 return;
             }
             if (peerConnection.signalingState === 'have-remote-offer') {
@@ -728,7 +731,7 @@ function factory(dependencies) {
          * from the receiving end.
          *
          * @private
-         * @param {Object} constraints MediaStreamTrack constraints
+         * @param {String} token
          * @param {Object} [param1]
          * @param {number} [param1.delay] in ms
          * @param {string} [param1.reason]
@@ -749,10 +752,20 @@ function factory(dependencies) {
                 if (peerConnection.iceConnectionState === 'connected') {
                     return;
                 }
-                if (['connected', 'closed'].includes(peerConnection.connectionState)) {
-                    return;
+                if (this.modelManager.isDebug) {
+                    let stats;
+                    try {
+                        const peerConnectionStats = await peerConnection.getStats();
+                        stats = peerConnectionStats && [...peerConnectionStats.values()];
+                    } catch (_e) {
+                        // ignore
+                    }
+                    this._addLogEntry(
+                        token,
+                        `calling back to recover "${peerConnection.iceConnectionState}" connection`,
+                        { reason, stats }
+                    );
                 }
-                this._addLogEntry(token, `calling back to recover ${peerConnection.iceConnectionState} connection, reason: ${reason}`);
                 await this._notifyPeers([token], {
                     event: 'disconnect',
                 });
@@ -914,6 +927,9 @@ function factory(dependencies) {
             await this._toggleLocalVideoTrack(trackOptions);
             for (const [token, peerConnection] of Object.entries(this._peerConnections)) {
                 await this._updateRemoteTrack(peerConnection, 'video', { token });
+            }
+            if (!this.currentRtcSession) {
+                return;
             }
             this.currentRtcSession.updateAndBroadcast({
                 isScreenSharingOn: !!this.sendDisplay,
@@ -1200,7 +1216,7 @@ function factory(dependencies) {
             if (!this.channel) {
                 return;
             }
-            if (!this.messaging.userSetting.usePushToTalk || !this.messaging.userSetting.isPushToTalkKey(ev, { ignoreModifiers: true })) {
+            if (!this.messaging.userSetting.usePushToTalk || !this.messaging.userSetting.isPushToTalkKey(ev)) {
                 return;
             }
             if (!this.currentRtcSession.isTalking) {
@@ -1248,6 +1264,14 @@ function factory(dependencies) {
                     ],
                 },
             ],
+        }),
+        /**
+         * list of connection states considered invalid, which means that
+         * no action should be taken on such peerConnection.
+         */
+        invalidIceConnectionStates: attr({
+            default: new Set(['disconnected', 'failed', 'closed']),
+            readonly: true,
         }),
         /**
          * true if the browser supports webRTC

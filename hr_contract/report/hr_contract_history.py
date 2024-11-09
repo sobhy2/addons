@@ -88,7 +88,7 @@ class ContractHistory(models.Model):
                 WHERE  contract.state <> 'cancel'
                 AND contract.active = true
                 WINDOW w_partition AS (
-                    PARTITION BY contract.employee_id
+                    PARTITION BY contract.employee_id, contract.company_id
                     ORDER BY
                         CASE
                             WHEN contract.state = 'open' THEN 0
@@ -111,7 +111,7 @@ class ContractHistory(models.Model):
             RIGHT JOIN hr_employee AS employee
                 ON  contract_information.employee_id = employee.id
                 AND contract.company_id = employee.company_id
-            WHERE   employee.employee_type IN ('employee', 'student')
+            WHERE   employee.employee_type IN ('employee', 'student', 'trainee')
         )""" % (self._table, self._get_fields()))
 
     @api.depends('employee_id.contract_ids')

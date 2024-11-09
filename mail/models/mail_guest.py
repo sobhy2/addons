@@ -29,6 +29,13 @@ class MailGuest(models.Model):
     timezone = fields.Selection(string="Timezone", selection=_tz_get)
     channel_ids = fields.Many2many(string="Channels", comodel_name='mail.channel', relation='mail_channel_partner', column1='guest_id', column2='channel_id', copy=False)
 
+    def _get_guest_from_context(self):
+        """Returns the current guest record from the context, if applicable."""
+        guest = self.env.context.get('guest')
+        if isinstance(guest, self.pool['mail.guest']):
+            return guest
+        return self.env['mail.guest']
+
     def _get_guest_from_request(self, request):
         parts = request.httprequest.cookies.get(self._cookie_name, '').split(self._cookie_separator)
         if len(parts) != 2:
@@ -57,16 +64,13 @@ class MailGuest(models.Model):
         if len(name) > 512:
             raise UserError(_("Guest's name is too long."))
         self.name = name
-        message = {
-            'type': 'mail.guest_update',
-            'payload': {
-                'id': self.id,
-                'name': self.name,
-            },
+        guest_data = {
+            'id': self.id,
+            'name': self.name
         }
-        bus_notifs = [((self._cr.dbname, 'mail.channel', channel.id), message) for channel in self.channel_ids]
-        bus_notifs.append(((self._cr.dbname, 'mail.guest', self.id), message))
-        self.env['bus.bus'].sendmany(bus_notifs)
+        bus_notifs = [(channel, 'mail.guest/insert', guest_data) for channel in self.channel_ids]
+        bus_notifs.append((self, 'mail.guest/insert', guest_data))
+        self.env['bus.bus']._sendmany(bus_notifs)
 
     def _update_timezone(self, timezone):
         query = """

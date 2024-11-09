@@ -242,9 +242,16 @@ class AccountAccount(models.Model):
             FROM account_journal journal
             JOIN res_company company on journal.company_id = company.id
             LEFT JOIN account_payment_method_line apml ON journal.id = apml.journal_id
-            WHERE company.account_journal_payment_credit_account_id in %(accounts)s
-            OR company.account_journal_payment_debit_account_id in %(accounts)s
-            OR apml.payment_account_id in %(accounts)s
+            WHERE (
+                company.account_journal_payment_credit_account_id IN %(accounts)s
+                AND company.account_journal_payment_credit_account_id != journal.default_account_id
+                ) OR (
+                company.account_journal_payment_debit_account_id in %(accounts)s
+                AND company.account_journal_payment_debit_account_id != journal.default_account_id
+                ) OR (
+                apml.payment_account_id IN %(accounts)s
+                AND apml.payment_account_id != journal.default_account_id
+            )
         ''', {
             'accounts': tuple(accounts.ids),
         })
@@ -302,7 +309,7 @@ class AccountAccount(models.Model):
         balances = {
             read['account_id'][0]: read['balance']
             for read in self.env['account.move.line'].read_group(
-                domain=[('account_id', 'in', self.ids)],
+                domain=[('account_id', 'in', self.ids), ('parent_state', '=', 'posted')],
                 fields=['balance', 'account_id'],
                 groupby=['account_id'],
             )
@@ -428,7 +435,10 @@ class AccountAccount(models.Model):
         args = args or []
         domain = []
         if name:
-            domain = ['|', ('code', '=ilike', name.split(' ')[0] + '%'), ('name', operator, name)]
+            if operator in ('=', '!='):
+                domain = ['|', ('code', '=', name.split(' ')[0]), ('name', operator, name)]
+            else:
+                domain = ['|', ('code', '=ilike', name.split(' ')[0] + '%'), ('name', operator, name)]
             if operator in expression.NEGATIVE_TERM_OPERATORS:
                 domain = ['&', '!'] + domain[1:]
         return self._search(expression.AND([domain, args]), limit=limit, access_rights_uid=name_get_uid)
@@ -441,10 +451,6 @@ class AccountAccount(models.Model):
         elif self.internal_group == 'off_balance':
             self.reconcile = False
             self.tax_ids = False
-        elif self.internal_group == 'income' and not self.tax_ids:
-            self.tax_ids = self.company_id.account_sale_tax_id
-        elif self.internal_group == 'expense' and not self.tax_ids:
-            self.tax_ids = self.company_id.account_purchase_tax_id
 
     def name_get(self):
         result = []
@@ -592,6 +598,9 @@ class AccountAccount(models.Model):
             'domain': [('id', 'in', related_taxes_ids)],
         }
 
+    def _merge_method(self, destination, source):
+        raise UserError(_("You cannot merge accounts."))
+
 
 class AccountGroup(models.Model):
     _name = "account.group"
@@ -665,6 +674,11 @@ class AccountGroup(models.Model):
         if res:
             raise ValidationError(_('Account Groups with the same granularity can\'t overlap'))
 
+    @api.constrains('parent_id')
+    def _check_parent_not_circular(self):
+        if not self._check_recursion():
+            raise ValidationError(_("You cannot create recursive groups."))
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -698,29 +712,37 @@ class AccountGroup(models.Model):
         The most specific is the one with the longest prefixes and with the starting
         prefix being smaller than the account code and the ending prefix being greater.
         """
-        if not self and not account_ids:
+        company_ids = account_ids.company_id.ids if account_ids else self.company_id.ids
+        account_ids = account_ids.ids if account_ids else []
+        if not company_ids and not account_ids:
             return
         self.env['account.group'].flush(self.env['account.group']._fields)
         self.env['account.account'].flush(self.env['account.account']._fields)
-        query = """
-            WITH relation AS (
-       SELECT DISTINCT FIRST_VALUE(agroup.id) OVER (PARTITION BY account.id ORDER BY char_length(agroup.code_prefix_start) DESC, agroup.id) AS group_id,
-                       account.id AS account_id
-                  FROM account_group agroup
-                  JOIN account_account account
+
+        account_where_clause = ''
+        where_params = [tuple(company_ids)]
+        if account_ids:
+            account_where_clause = 'AND account.id IN %s'
+            where_params.append(tuple(account_ids))
+
+        self._cr.execute(f'''
+            WITH candidates_account_groups AS (
+                SELECT
+                    account.id AS account_id,
+                    ARRAY_AGG(agroup.id ORDER BY char_length(agroup.code_prefix_start) DESC, agroup.id) AS group_ids
+                FROM account_account account
+                LEFT JOIN account_group agroup
                     ON agroup.code_prefix_start <= LEFT(account.code, char_length(agroup.code_prefix_start))
-                   AND agroup.code_prefix_end >= LEFT(account.code, char_length(agroup.code_prefix_end))
-                   AND agroup.company_id = account.company_id
-                 WHERE account.company_id IN %(company_ids)s {where_account}
+                    AND agroup.code_prefix_end >= LEFT(account.code, char_length(agroup.code_prefix_end))
+                    AND agroup.company_id = account.company_id
+                WHERE account.company_id IN %s {account_where_clause}
+                GROUP BY account.id
             )
-            UPDATE account_account account
-               SET group_id = relation.group_id
-              FROM relation
-             WHERE relation.account_id = account.id;
-        """.format(
-            where_account=account_ids and 'AND account.id IN %(account_ids)s' or ''
-        )
-        self.env.cr.execute(query, {'company_ids': tuple((self.company_id or account_ids.company_id).ids), 'account_ids': account_ids and tuple(account_ids.ids)})
+            UPDATE account_account
+            SET group_id = rel.group_ids[1]
+            FROM candidates_account_groups rel
+            WHERE account_account.id = rel.account_id
+        ''', where_params)
         self.env['account.account'].invalidate_cache(fnames=['group_id'])
 
     def _adapt_parent_account_group(self):

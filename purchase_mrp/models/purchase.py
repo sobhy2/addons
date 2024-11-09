@@ -18,12 +18,14 @@ class PurchaseOrder(models.Model):
     @api.depends('order_line.move_dest_ids.group_id.mrp_production_ids')
     def _compute_mrp_production_count(self):
         for purchase in self:
-            purchase.mrp_production_count = len(purchase.order_line.move_dest_ids.group_id.mrp_production_ids |
-                                                purchase.order_line.move_ids.move_dest_ids.group_id.mrp_production_ids)
+            purchase.mrp_production_count = len(purchase._get_mrp_productions())
+
+    def _get_mrp_productions(self, **kwargs):
+        return self.order_line.move_dest_ids.group_id.mrp_production_ids | self.order_line.move_ids.move_dest_ids.group_id.mrp_production_ids
 
     def action_view_mrp_productions(self):
         self.ensure_one()
-        mrp_production_ids = (self.order_line.move_dest_ids.group_id.mrp_production_ids | self.order_line.move_ids.move_dest_ids.group_id.mrp_production_ids).ids 
+        mrp_production_ids = self._get_mrp_productions().ids
         action = {
             'res_model': 'mrp.production',
             'type': 'ir.actions.act_window',
@@ -47,7 +49,7 @@ class PurchaseOrderLine(models.Model):
 
     def _compute_qty_received(self):
         kit_lines = self.env['purchase.order.line']
-        lines_stock = self.filtered(lambda l: l.qty_received_method == 'stock_moves' and l.move_ids)
+        lines_stock = self.filtered(lambda l: l.qty_received_method == 'stock_moves' and l.move_ids and l.state != 'cancel')
         product_by_company = defaultdict(OrderedSet)
         for line in lines_stock:
             product_by_company[line.company_id].add(line.product_id.id)

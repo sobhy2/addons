@@ -47,6 +47,40 @@ WebsiteNewMenu.include({
 });
 });
 
+odoo.define('website_sale.editMenu', function (require) {
+    'use strict';
+
+var WebsiteEditMenu = require('website.editMenu');
+
+// TODO this whole include actually seems unnecessary. The bug it solved seems
+// to stay solved if this is removed. To investigate.
+WebsiteEditMenu.include({
+    /**
+     * @override
+     */
+    _getContentEditableAreas() {
+        const array = this._super(...arguments);
+        return array.filter(el => {
+            // TODO should really review this system of "ContentEditableAreas +
+            // ReadOnlyAreas", here the "products_header" stuff is duplicated in
+            // both but this system is also duplicated with o_not_editable and
+            // maybe even other systems (like preserving contenteditable="false"
+            // with oe-keep-contenteditable).
+            return !el.closest('.oe_website_sale .products_header');
+        });
+    },
+    /**
+     * @override
+     */
+    _getReadOnlyAreas () {
+        const readOnlyEls = this._super(...arguments);
+        return [...readOnlyEls].concat(
+            $("#wrapwrap").find('.oe_website_sale .products_header, .oe_website_sale .products_header a').toArray()
+        );
+    },
+});
+});
+
 //==============================================================================
 
 odoo.define('website_sale.editor', function (require) {
@@ -250,25 +284,6 @@ Wysiwyg.include({
     },
 });
 
-publicWidget.registry.websiteSaleCurrency = publicWidget.Widget.extend({
-    selector: '.oe_website_sale',
-    disabledInEditableMode: false,
-    edit_events: {
-        'click .oe_currency_value:o_editable': '_onCurrencyValueClick',
-    },
-
-    //--------------------------------------------------------------------------
-    // Handlers
-    //--------------------------------------------------------------------------
-
-    /**
-     * @private
-     */
-    _onCurrencyValueClick: function (ev) {
-        $(ev.currentTarget).selectContent();
-    },
-});
-
 function reload() {
     if (window.location.href.match(/\?enable_editor/)) {
         window.location.reload();
@@ -303,15 +318,16 @@ options.registry.WebsiteSaleGridLayout = options.Class.extend({
      * @see this.selectClass for params
      */
     setPpg: function (previewMode, widgetValue, params) {
+        const PPG_LIMIT = 10000;
         const ppg = parseInt(widgetValue);
         if (!ppg || ppg < 1) {
             return false;
         }
-        this.ppg = ppg;
+        this.ppg = Math.min(ppg, PPG_LIMIT);
         return this._rpc({
             route: '/shop/change_ppg',
             params: {
-                'ppg': ppg,
+                'ppg': this.ppg,
             },
         }).then(() => reload());
     },

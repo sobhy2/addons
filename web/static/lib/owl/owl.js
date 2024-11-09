@@ -359,6 +359,7 @@
      * the list of variables so it does not get replaced by a lookup in the context
      */
     function compileExprToArray(expr, scope) {
+        const localVars = new Set();
         scope = Object.create(scope);
         const tokens = tokenize(expr);
         let i = 0;
@@ -407,12 +408,14 @@
                         if (tokens[j].type === "SYMBOL" && tokens[j].originalValue) {
                             tokens[j].value = tokens[j].originalValue;
                             scope[tokens[j].value] = { id: tokens[j].value, expr: tokens[j].value };
+                            localVars.add(tokens[j].value);
                         }
                         j--;
                     }
                 }
                 else {
                     scope[token.value] = { id: token.value, expr: token.value };
+                    localVars.add(token.value);
                 }
             }
             if (isVar) {
@@ -426,6 +429,13 @@
                 }
             }
             i++;
+        }
+        // Mark all variables that have been used locally.
+        // This assumes the expression has only one scope (incorrect but "good enough for now")
+        for (const token of tokens) {
+            if (token.type === "SYMBOL" && localVars.has(token.value)) {
+                token.isLocal = true;
+            }
         }
         return tokens;
     }
@@ -577,8 +587,24 @@
             const tokens = compileExprToArray(expr, this.variables);
             const done = new Set();
             return tokens
-                .map((tok) => {
-                if (tok.varName) {
+                .map((tok, i) => {
+                // "this" in captured expressions should be the current component
+                if (tok.value === "this") {
+                    if (!done.has("this")) {
+                        done.add("this");
+                        this.addLine(`const this_${argId} = utils.getComponent(context);`);
+                    }
+                    tok.value = `this_${argId}`;
+                }
+                // Variables that should be looked up in the scope. isLocal is for arrow
+                // function arguments that should stay untouched (eg "ev => ev" should
+                // not become "const ev_1 = scope['ev']; ev_1 => ev_1")
+                if (tok.varName &&
+                    !tok.isLocal &&
+                    // HACK: for backwards compatibility, we don't capture bare methods
+                    // this allows them to be called with the rendering context/scope
+                    // as their this value.
+                    (!tokens[i + 1] || tokens[i + 1].type !== "LEFT_PAREN")) {
                     if (!done.has(tok.varName)) {
                         done.add(tok.varName);
                         this.addLine(`const ${tok.varName}_${argId} = ${tok.value};`);
@@ -891,16 +917,16 @@
         }
         return map;
     }
-    const hooks = ["create", "update", "remove", "destroy", "pre", "post"];
+    const hooks$1 = ["create", "update", "remove", "destroy", "pre", "post"];
     function init(modules, domApi) {
         let i, j, cbs = {};
         const api = domApi !== undefined ? domApi : htmlDomApi;
-        for (i = 0; i < hooks.length; ++i) {
-            cbs[hooks[i]] = [];
+        for (i = 0; i < hooks$1.length; ++i) {
+            cbs[hooks$1[i]] = [];
             for (j = 0; j < modules.length; ++j) {
-                const hook = modules[j][hooks[i]];
+                const hook = modules[j][hooks$1[i]];
                 if (hook !== undefined) {
-                    cbs[hooks[i]].push(hook);
+                    cbs[hooks$1[i]].push(hook);
                 }
             }
         }
@@ -1702,17 +1728,8 @@
                 return vnode.text;
             }
             const node = document.createElement(vnode.sel);
-            const elem = patch(node, vnode).elm;
-            function escapeTextNodes(node) {
-                if (node.nodeType === 3) {
-                    node.textContent = escape(node.textContent);
-                }
-                for (let n of node.childNodes) {
-                    escapeTextNodes(n);
-                }
-            }
-            escapeTextNodes(elem);
-            return elem.outerHTML;
+            const result = patch(node, vnode);
+            return result.elm.outerHTML;
         }
         /**
          * Force all widgets connected to this QWeb instance to rerender themselves.
@@ -2509,7 +2526,8 @@
             ctx.addLine(`if (!_${arrayID}) { throw new Error('QWeb error: Invalid loop expression')}`);
             let keysID = ctx.generateID();
             let valuesID = ctx.generateID();
-            ctx.addLine(`let _${keysID} = _${valuesID} = _${arrayID};`);
+            ctx.addLine(`let _${keysID} = _${arrayID};`);
+            ctx.addLine(`let _${valuesID} = _${arrayID};`);
             ctx.addIf(`!(_${arrayID} instanceof Array)`);
             ctx.addLine(`_${keysID} = Object.keys(_${arrayID});`);
             ctx.addLine(`_${valuesID} = Object.values(_${arrayID});`);
@@ -2921,7 +2939,7 @@
                 console.info(`Owl is running in 'dev' mode.
 
 This is not suitable for production use.
-See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for more information.`);
+See https://github.com/odoo/owl/blob/owl-1.x/doc/reference/config.md#mode for more information.`);
             }
         },
     });
@@ -3175,7 +3193,12 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
                 else if (!name.startsWith("t-")) {
                     if (name !== "class" && name !== "style") {
                         // this is a prop!
-                        props[name] = ctx.formatExpression(value) || "undefined";
+                        if (value.includes("=>")) {
+                            props[name] = ctx.captureExpression(value);
+                        }
+                        else {
+                            props[name] = ctx.formatExpression(value) || "undefined";
+                        }
                     }
                 }
             }
@@ -3701,8 +3724,9 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
                     component.__patch(target, fiber.vnode);
                 }
                 else {
-                    if (fiber.shouldPatch) {
-                        component.__patch(component.__owl__.vnode, fiber.vnode);
+                    const vnode = component.__owl__.vnode;
+                    if (fiber.shouldPatch && vnode) {
+                        component.__patch(vnode, fiber.vnode);
                         // When updating a Component's props (in directive),
                         // the component has a pvnode AND should be patched.
                         // However, its pvnode.elm may have changed if it is a High Order Component
@@ -3860,16 +3884,17 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
                         continue;
                     }
                 }
-                let isValid;
+                let whyInvalid;
                 try {
-                    isValid = isValidProp(props[propName], propsDef[propName]);
+                    whyInvalid = whyInvalidProp(props[propName], propsDef[propName]);
                 }
                 catch (e) {
                     e.message = `Invalid prop '${propName}' in component ${Widget.name} (${e.message})`;
                     throw e;
                 }
-                if (!isValid) {
-                    throw new Error(`Invalid Prop '${propName}' in component '${Widget.name}'`);
+                if (whyInvalid !== null) {
+                    whyInvalid = whyInvalid.replace(/\${propName}/g, propName);
+                    throw new Error(`Invalid Prop '${propName}' in component '${Widget.name}': ${whyInvalid}`);
                 }
             }
             for (let propName in props) {
@@ -3880,11 +3905,11 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
         }
     };
     /**
-     * Check if an invidual prop value matches its (static) prop definition
+     * Check why an invidual prop value doesn't match its (static) prop definition
      */
-    function isValidProp(prop, propDef) {
+    function whyInvalidProp(prop, propDef) {
         if (propDef === true) {
-            return true;
+            return null;
         }
         if (typeof propDef === "function") {
             // Check if a value is constructed by some Constructor.  Note that there is a
@@ -3893,46 +3918,70 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
             // So, even though 1 is not an instance of Number, we want to consider that
             // it is valid.
             if (typeof prop === "object") {
-                return prop instanceof propDef;
+                if (prop instanceof propDef) {
+                    return null;
+                }
+                return `\${propName} is not an instance of ${propDef.name}`;
             }
-            return typeof prop === propDef.name.toLowerCase();
+            if (typeof prop === propDef.name.toLowerCase()) {
+                return null;
+            }
+            return `type of \${propName} is not ${propDef.name}`;
         }
         else if (propDef instanceof Array) {
             // If this code is executed, this means that we want to check if a prop
             // matches at least one of its descriptor.
-            let result = false;
+            let reasons = [];
             for (let i = 0, iLen = propDef.length; i < iLen; i++) {
-                result = result || isValidProp(prop, propDef[i]);
+                const why = whyInvalidProp(prop, propDef[i]);
+                if (why === null) {
+                    return null;
+                }
+                reasons.push(why);
             }
-            return result;
+            if (reasons.length > 1) {
+                return reasons.slice(0, -1).join(", ") + " and " + reasons[reasons.length - 1];
+            }
+            else {
+                return reasons[0];
+            }
         }
         // propsDef is an object
         if (propDef.optional && prop === undefined) {
-            return true;
+            return null;
         }
-        let result = propDef.type ? isValidProp(prop, propDef.type) : true;
-        if (propDef.validate) {
-            result = result && propDef.validate(prop);
+        if (propDef.type) {
+            const why = whyInvalidProp(prop, propDef.type);
+            if (why !== null) {
+                return why;
+            }
+        }
+        if (propDef.validate && !propDef.validate(prop)) {
+            return "${propName} could not be validated by `validate` function";
         }
         if (propDef.type === Array && propDef.element) {
             for (let i = 0, iLen = prop.length; i < iLen; i++) {
-                result = result && isValidProp(prop[i], propDef.element);
+                const why = whyInvalidProp(prop[i], propDef.element);
+                if (why !== null) {
+                    return why.replace(/\${propName}/g, `\${propName}[${i}]`);
+                }
             }
         }
         if (propDef.type === Object && propDef.shape) {
             const shape = propDef.shape;
             for (let key in shape) {
-                result = result && isValidProp(prop[key], shape[key]);
+                const why = whyInvalidProp(prop[key], shape[key]);
+                if (why !== null) {
+                    return why.replace(/\${propName}/g, `\${propName}['${key}']`);
+                }
             }
-            if (result) {
-                for (let propName in prop) {
-                    if (!(propName in shape)) {
-                        throw new Error(`unknown prop '${propName}'`);
-                    }
+            for (let propName in prop) {
+                if (!(propName in shape)) {
+                    return `unknown prop \${propName}['${propName}']`;
                 }
             }
         }
-        return result;
+        return null;
     }
 
     /**
@@ -4660,7 +4709,7 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
             return acc;
         }, []);
     }
-    class Context extends EventBus {
+    class Context$1 extends EventBus {
         constructor(state = {}) {
             super();
             this.rev = 1;
@@ -4773,7 +4822,7 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
      * will return an observed object (or array).  Changes to that value will then
      * trigger a rerendering of the current component.
      */
-    function useState(state) {
+    function useState$1(state) {
         const component = Component.current;
         const __owl__ = component.__owl__;
         if (!__owl__.observer) {
@@ -4841,12 +4890,20 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
         const __owl__ = Component.current.__owl__;
         return {
             get el() {
+                var _a, _b;
                 const val = __owl__.refs && __owl__.refs[name];
+                if (val instanceof Component) {
+                    return val.el;
+                }
                 if (val instanceof HTMLElement) {
                     return val;
                 }
-                else if (val instanceof Component) {
-                    return val.el;
+                // Extra check in case the app was created outside an iframe but mounted into one
+                // on Firefox 109+, the prototype of the element changes to use the iframe window's HTMLElement
+                // see https://bugzilla.mozilla.org/show_bug.cgi?id=1813499
+                const ownerWindow = (_b = (_a = val) === null || _a === void 0 ? void 0 : _a.ownerDocument) === null || _b === void 0 ? void 0 : _b.defaultView;
+                if (ownerWindow && val instanceof ownerWindow.HTMLElement) {
+                    return val;
                 }
                 return null;
             },
@@ -4909,7 +4966,7 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
 
     var _hooks = /*#__PURE__*/Object.freeze({
         __proto__: null,
-        useState: useState,
+        useState: useState$1,
         onMounted: onMounted,
         onWillUnmount: onWillUnmount,
         onWillPatch: onWillPatch,
@@ -4923,7 +4980,7 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
         useExternalListener: useExternalListener
     });
 
-    class Store extends Context {
+    class Store$1 extends Context$1 {
         constructor(config) {
             super(config.state);
             this.actions = config.actions;
@@ -4962,7 +5019,7 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
         const component = Component.current;
         const componentId = component.__owl__.id;
         const store = options.store || component.env.store;
-        if (!(store instanceof Store)) {
+        if (!(store instanceof Store$1)) {
             throw new Error(`No store found when connecting '${component.constructor.name}'`);
         }
         let result = selector(store.state, component.props);
@@ -5509,15 +5566,15 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
      *
      * Note that dynamic values, such as a date or a commit hash are added by rollup
      */
-    const Context$1 = Context;
-    const useState$1 = useState;
+    const Context = Context$1;
+    const useState = useState$1;
     const core = { EventBus, Observer };
     const router = { Router, RouteComponent, Link };
-    const Store$1 = Store;
+    const Store = Store$1;
     const utils = _utils;
     const tags = _tags;
     const misc = { AsyncRoot, Portal };
-    const hooks$1 = Object.assign({}, _hooks, {
+    const hooks = Object.assign({}, _hooks, {
         useContext: useContext,
         useDispatch: useDispatch,
         useGetters: useGetters,
@@ -5526,25 +5583,27 @@ See https://github.com/odoo/owl/blob/master/doc/reference/config.md#mode for mor
     const __info__ = {};
 
     exports.Component = Component;
-    exports.Context = Context$1;
+    exports.Context = Context;
     exports.QWeb = QWeb;
-    exports.Store = Store$1;
+    exports.Store = Store;
     exports.__info__ = __info__;
     exports.browser = browser;
     exports.config = config;
     exports.core = core;
-    exports.hooks = hooks$1;
+    exports.hooks = hooks;
     exports.misc = misc;
     exports.mount = mount;
     exports.router = router;
     exports.tags = tags;
-    exports.useState = useState$1;
+    exports.useState = useState;
     exports.utils = utils;
 
+    Object.defineProperty(exports, '__esModule', { value: true });
 
-    __info__.version = '1.4.6';
-    __info__.date = '2021-10-04T13:18:44.608Z';
-    __info__.hash = 'c0f4956';
+
+    __info__.version = '1.4.11';
+    __info__.date = '2023-01-30T13:09:39.141Z';
+    __info__.hash = 'a38c534';
     __info__.url = 'https://github.com/odoo/owl';
 
 

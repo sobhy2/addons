@@ -5,15 +5,16 @@
 # Translators:
 # Martin Trigaux, 2021
 # Erwin van der Ploeg <erwin@odooexperts.nl>, 2021
+# Jolien De Paepe, 2023
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~14.5\n"
+"Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-09-14 10:29+0000\n"
+"POT-Creation-Date: 2024-08-14 15:43+0000\n"
 "PO-Revision-Date: 2021-09-14 12:26+0000\n"
-"Last-Translator: Erwin van der Ploeg <erwin@odooexperts.nl>, 2021\n"
-"Language-Team: Dutch (https://www.transifex.com/odoo/teams/41243/nl/)\n"
+"Last-Translator: Jolien De Paepe, 2023\n"
+"Language-Team: Dutch (https://app.transifex.com/odoo/teams/41243/nl/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
@@ -38,7 +39,6 @@ msgstr "%s (kopie)"
 
 #. module: sms
 #. openerp-web
-#: code:addons/sms/static/src/js/fields_sms_widget.js:0
 #: code:addons/sms/static/src/js/fields_sms_widget.js:0
 #, python-format
 msgid "%s characters, fits in %s SMS (%s) "
@@ -122,7 +122,7 @@ msgid ""
 "this template"
 msgstr ""
 "Voeg een contextuele actie toe aan het gerelateerde model om een SMS wizard "
-"te tonen met dit sjabloon"
+"te tonen met deze sjabloon"
 
 #. module: sms
 #. openerp-web
@@ -271,8 +271,8 @@ msgstr "Klant: geautomatiseerde SMS"
 
 #. module: sms
 #: model:sms.template,body:sms.sms_template_demo_0
-msgid "Dear ${object.display_name} this is an automated SMS."
-msgstr "Beste ${object.display_name} dit is een geautomatiseerde SMS."
+msgid "Dear {{ object.display_name }} this is an automated SMS."
+msgstr "Beste {{ object.display_name }} dit is een automatisch sms'je."
 
 #. module: sms
 #: model:ir.model.fields,field_description:sms.field_sms_template__null_value
@@ -334,7 +334,7 @@ msgstr "Documentmodel naam"
 #. module: sms
 #: model:ir.model.fields.selection,name:sms.selection__sms_sms__failure_type__sms_duplicate
 msgid "Duplicate"
-msgstr "Dupliceer"
+msgstr "Dupliceren"
 
 #. module: sms
 #: model_terms:ir.ui.view,arch_db:sms.sms_template_view_form
@@ -775,13 +775,13 @@ msgstr "Afgemeld"
 msgid ""
 "Optional translation language (ISO code) to select when sending out an "
 "email. If not set, the english version will be used. This should usually be "
-"a placeholder expression that provides the appropriate language, e.g. "
-"${object.partner_id.lang}."
+"a placeholder expression that provides the appropriate language, e.g. {{ "
+"object.partner_id.lang }}."
 msgstr ""
-"Optionele vertaling (ISO code) welke je kunt selecteren bij het versturen "
-"van een e-mail. Indien niet ingesteld, wordt de Engelse versie gebruikt. "
-"Normaliter is dit een bladwijzer welke de juiste taal aangeeft. Bijv.: "
-"${object.partner_id.lang}."
+"Optionele vertaaltaal (ISO-code) om te selecteren bij het verzenden van een "
+"e-mail. Indien niet ingesteld, wordt de Engelse versie gebruikt. Dit moet "
+"meestal een tijdelijke aanduiding zijn die de juiste taal biedt, bijv. {{ "
+"object.partner_id.lang }}."
 
 #. module: sms
 #: model:ir.model.fields,help:sms.field_sms_template__null_value
@@ -1148,7 +1148,7 @@ msgid ""
 "Sidebar action to make this template available on records of the related "
 "document model"
 msgstr ""
-"Navigatiekolom-actie om dit sjabloon beschikbaar te maken op de regels van "
+"Navigatiekolom-actie om deze sjabloon beschikbaar te maken op de regels van "
 "het gerelateerde documentmodel"
 
 #. module: sms
@@ -1218,7 +1218,7 @@ msgstr "Het nummer dat je probeert te bereiken, is niet correct opgemaakt."
 #: model:ir.model.fields,help:sms.field_sms_template__model_id
 #: model:ir.model.fields,help:sms.field_sms_template_preview__model_id
 msgid "The type of document this template can be used with"
-msgstr "Het soort document waarvoor dit sjabloon kan worden gebruikt"
+msgstr "Het soort document waarvoor deze sjabloon kan worden gebruikt"
 
 #. module: sms
 #: code:addons/sms/models/sms_sms.py:0
@@ -1401,8 +1401,8 @@ msgstr "bijv. Contact"
 
 #. module: sms
 #: model_terms:ir.ui.view,arch_db:sms.sms_template_view_form
-msgid "e.g. en_US or ${object.partner_id.lang}"
-msgstr "Bijv. en_US of ${object.partner_id.lang}"
+msgid "e.g. en_US or {{ object.partner_id.lang }}"
+msgstr "bijv.. en_US of {{ object.partner_id.lang }}"
 
 #. module: sms
 #: model_terms:ir.ui.view,arch_db:sms.sms_composer_view_form

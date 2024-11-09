@@ -8,7 +8,7 @@ class DeliveryCarrierMondialRelay(models.Model):
     _inherit = 'delivery.carrier'
 
     is_mondialrelay = fields.Boolean(compute='_compute_is_mondialrelay')
-    mondialrelay_brand = fields.Char(string='Brand Code', default='BDTEST  ', groups="base.group_system")
+    mondialrelay_brand = fields.Char(string='Brand Code', default='BDTEST  ')
     mondialrelay_packagetype = fields.Char(default="24R", groups="base.group_system")  # Advanced
 
     @api.depends('product_id.default_code')
@@ -26,4 +26,4 @@ class DeliveryCarrierMondialRelay(models.Model):
                 'track': picking.carrier_tracking_ref,
                 'lang': (picking.partner_id.lang or 'fr').split('_')[0],
             }
-        return super().based_on_rule_get_tracking_link(picking)
+        return super().base_on_rule_get_tracking_link(picking)

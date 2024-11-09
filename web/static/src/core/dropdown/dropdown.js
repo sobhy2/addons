@@ -73,6 +73,23 @@ export class Dropdown extends Component {
         useDropdownNavigation();
 
         // Set up toggler and positioning --------------------------------------
+        /** @type {string} **/
+        let position =
+            this.props.position || (this.hasParentDropdown ? "right-start" : "bottom-start");
+        let [direction, variant = "middle"] = position.split("-");
+        if (localization.direction === "rtl") {
+            if (["bottom", "top"].includes(direction)) {
+                variant = variant === "start" ? "end" : "start";
+            } else {
+                direction = direction === "left" ? "right" : "left";
+            }
+            position = [direction, variant].join("-");
+        }
+        const positioningOptions = {
+            popper: "menuRef",
+            position,
+        };
+        this.directionCaretClass = DIRECTION_CARET_CLASS[direction];
         this.togglerRef = useRef("togglerRef");
         if (this.props.toggler === "parent") {
             // Add parent click listener to handle toggling
@@ -85,6 +102,12 @@ export class Dropdown extends Component {
                         }
                         this.toggle();
                     };
+                    if (this.el.parentElement.tabIndex === -1) {
+                        // If the parent is not focusable, make it focusable programmatically.
+                        // This code may look weird, but an element with a negative tabIndex is
+                        // focusable programmatically ONLY if its tabIndex is explicitly set.
+                        this.el.parentElement.tabIndex = -1;
+                    }
                     this.el.parentElement.addEventListener("click", onClick);
                     return () => {
                         this.el.parentElement.removeEventListener("click", onClick);
@@ -92,37 +115,20 @@ export class Dropdown extends Component {
                 },
                 () => []
             );
-        }
 
-        // Setup positioning only when in desktop
-        if (!this.env.isSmall) {
-            /** @type {string} **/
-            let position =
-                this.props.position || (this.hasParentDropdown ? "right-start" : "bottom-start");
-            let [direction, variant = "middle"] = position.split("-");
-            if (localization.direction === "rtl") {
-                if (["bottom", "top"].includes(direction)) {
-                    variant = variant === "start" ? "end" : "start";
-                } else {
-                    direction = direction === "left" ? "right" : "left";
-                }
-                position = [direction, variant].join("-");
-            }
-            this.directionCaretClass = DIRECTION_CARET_CLASS[direction];
-
-            const positioningOptions = {
-                popper: "menuRef",
-                position,
-                directionFlipOrder: { right: "rl", bottom: "bt", top: "tb", left: "lr" },
-            };
+            useEffect(
+                (open) => {
+                    this.el.parentElement.ariaExpanded = open ? "true" : "false";
+                },
+                () => [this.state.open]
+            );
 
             // Position menu relatively to parent element
-            if (this.props.toggler === "parent") {
-                usePosition(() => this.el.parentElement, positioningOptions);
-            } else {
-                // Position menu relatively to inner toggler
-                usePosition(() => this.togglerRef.el, positioningOptions);
-            }
+            usePosition(() => this.el.parentElement, positioningOptions);
+        } else {
+            // Position menu relatively to inner toggler
+            const togglerRef = useRef("togglerRef");
+            usePosition(() => togglerRef.el, positioningOptions);
         }
     }
 
@@ -252,6 +258,7 @@ export class Dropdown extends Component {
      */
     onTogglerMouseEnter() {
         if (this.state.groupIsOpen && !this.state.open) {
+            this.togglerRef.el.focus();
             this.open();
         }
     }

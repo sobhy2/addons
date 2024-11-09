@@ -2,16 +2,11 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, RedirectWarning
 
 
 class AccountMove(models.Model):
     _inherit = "account.move"
-
-    @api.depends('amount_total')
-    def _compute_amount_total_words(self):
-        for invoice in self:
-            invoice.amount_total_words = invoice.currency_id.amount_to_text(invoice.amount_total)
 
     amount_total_words = fields.Char("Total (In Words)", compute="_compute_amount_total_words")
     l10n_in_gst_treatment = fields.Selection([
@@ -22,7 +17,7 @@ class AccountMove(models.Model):
             ('overseas', 'Overseas'),
             ('special_economic_zone', 'Special Economic Zone'),
             ('deemed_export', 'Deemed Export')
-        ], string="GST Treatment", readonly=True, states={'draft': [('readonly', False)]})
+        ], string="GST Treatment", compute="_compute_l10n_in_gst_treatment", store=True, readonly=False, copy=True)
     l10n_in_state_id = fields.Many2one('res.country.state', string="Location of supply")
     l10n_in_gstin = fields.Char(string="GSTIN")
     # For Export invoice this data is need in GSTR report
@@ -31,12 +26,15 @@ class AccountMove(models.Model):
     l10n_in_shipping_port_code_id = fields.Many2one('l10n_in.port.code', 'Port code', states={'draft': [('readonly', False)]})
     l10n_in_reseller_partner_id = fields.Many2one('res.partner', 'Reseller', domain=[('vat', '!=', False)], help="Only Registered Reseller", readonly=True, states={'draft': [('readonly', False)]})
 
-    @api.onchange('partner_id')
-    def _onchange_partner_id(self):
-        """Use journal type to define document type because not miss state in any entry including POS entry"""
-        if self.country_code == 'IN':
-            self.l10n_in_gst_treatment = self.partner_id.l10n_in_gst_treatment
-        return super()._onchange_partner_id()
+    @api.depends('amount_total')
+    def _compute_amount_total_words(self):
+        for invoice in self:
+            invoice.amount_total_words = invoice.currency_id.amount_to_text(invoice.amount_total)
+
+    @api.depends('partner_id')
+    def _compute_l10n_in_gst_treatment(self):
+        for record in self:
+            record.l10n_in_gst_treatment = record.partner_id.l10n_in_gst_treatment
 
     @api.model
     def _l10n_in_get_indian_state(self, partner):
@@ -90,20 +88,33 @@ class AccountMove(models.Model):
         """Overwrite in sale"""
         return shipping_partner.vat
 
+    def _get_name_invoice_report(self):
+        if self.country_code == 'IN':
+            # TODO: remove the view mode check in master, only for stable releases
+            in_invoice_view = self.env.ref('l10n_in.l10n_in_report_invoice_document_inherit', raise_if_not_found=False)
+            if (in_invoice_view and in_invoice_view.sudo().mode == "primary"):
+                return 'l10n_in.l10n_in_report_invoice_document_inherit'
+        return super()._get_name_invoice_report()
+
     def _post(self, soft=True):
         """Use journal type to define document type because not miss state in any entry including POS entry"""
         posted = super()._post(soft)
         gst_treatment_name_mapping = {k: v for k, v in
                              self._fields['l10n_in_gst_treatment']._description_selection(self.env)}
-        for move in posted.filtered(lambda m: m.country_code == 'IN'):
+        for move in posted.filtered(lambda m: m.country_code == 'IN' and m.is_sale_document()):
             """Check state is set in company/sub-unit"""
             company_unit_partner = move.journal_id.l10n_in_gstin_partner_id or move.journal_id.company_id
             if not company_unit_partner.state_id:
-                raise ValidationError(_(
-                    "State is missing from your company/unit %(company_name)s (%(company_id)s).\nFirst set state in your company/unit.",
-                    company_name=company_unit_partner.name,
-                    company_id=company_unit_partner.id
-                ))
+                msg = _("Your company %s needs to have a correct address in order to validate this invoice.\n"
+                "Set the address of your company (Don't forget the State field)") % (company_unit_partner.name)
+                action = {
+                    "view_mode": "form",
+                    "res_model": "res.company",
+                    "type": "ir.actions.act_window",
+                    "res_id" : move.company_id.id,
+                    "views": [[self.env.ref("base.view_company_form").id, "form"]],
+                }
+                raise RedirectWarning(msg, action, _('Go to Company configuration'))
             elif move.journal_id.type == 'purchase':
                 move.l10n_in_state_id = company_unit_partner.state_id
 
@@ -126,3 +137,9 @@ class AccountMove(models.Model):
                 if not move.l10n_in_state_id:
                     move.l10n_in_state_id = company_unit_partner.state_id
         return posted
+
+    def _l10n_in_get_warehouse_address(self):
+        """Return address where goods are delivered/received for Invoice/Bill"""
+        # TO OVERRIDE
+        self.ensure_one()
+        return False

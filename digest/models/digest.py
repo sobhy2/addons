@@ -7,7 +7,7 @@ import pytz
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from markupsafe import Markup
-from werkzeug.urls import url_join
+from werkzeug.urls import url_encode, url_join
 
 from odoo import api, fields, models, tools, _
 from odoo.addons.base.models.ir_mail_server import MailDeliveryException
@@ -41,6 +41,7 @@ class Digest(models.Model):
     kpi_mail_message_total = fields.Boolean('Messages')
     kpi_mail_message_total_value = fields.Integer(compute='_compute_kpi_mail_message_total_value')
 
+    @api.depends('user_ids')
     def _compute_is_subscribed(self):
         for digest in self:
             digest.is_subscribed = self.env.user in digest.user_ids
@@ -87,11 +88,21 @@ class Digest(models.Model):
 
     def action_subscribe(self):
         if self.env.user.has_group('base.group_user') and self.env.user not in self.user_ids:
-            self.sudo().user_ids |= self.env.user
+            self._action_subscribe_users(self.env.user)
+
+    def _action_subscribe_users(self, users):
+        """ Private method to manage subscriptions. Done as sudo() to speedup
+        computation and avoid ACLs issues. """
+        self.sudo().user_ids |= users
 
     def action_unsubcribe(self):
         if self.env.user.has_group('base.group_user') and self.env.user in self.user_ids:
-            self.sudo().user_ids -= self.env.user
+            self._action_unsubscribe_users(self.env.user)
+
+    def _action_unsubscribe_users(self, users):
+        """ Private method to manage subscriptions. Done as sudo() to speedup
+        computation and avoid ACLs issues. """
+        self.sudo().user_ids -= users
 
     def action_activate(self):
         self.state = 'activated'
@@ -104,6 +115,7 @@ class Digest(models.Model):
 
     def action_send(self):
         to_slowdown = self._check_daily_logs()
+
         for digest in self:
             for user in digest.user_ids:
                 digest.with_context(
@@ -111,11 +123,13 @@ class Digest(models.Model):
                     lang=user.lang
                 )._action_send_to_user(user, tips_count=1)
             if digest in to_slowdown:
-                digest.write({'periodicity': 'weekly'})
+                digest.write({'periodicity': digest._get_next_periodicity()[0]})
             digest.next_run_date = digest._get_next_run_date()
 
     def _action_send_to_user(self, user, tips_count=1, consum_tips=True):
-        rendered_body = self.env['mail.render.mixin']._render_template(
+        unsubscribe_token = self._get_unsubscribe_token(user.id)
+
+        rendered_body = self.env['mail.render.mixin'].with_context(preserve_comments=True)._render_template(
             'digest.digest_mail_main',
             'digest.digest',
             self.ids,
@@ -126,6 +140,7 @@ class Digest(models.Model):
                 'top_button_url': self.get_base_url(),
                 'company': user.company_id,
                 'user': user,
+                'unsubscribe_token': unsubscribe_token,
                 'tips_count': tips_count,
                 'formatted_date': datetime.today().strftime('%B %d, %Y'),
                 'display_mobile_banner': True,
@@ -144,15 +159,34 @@ class Digest(models.Model):
             },
         )
         # create a mail_mail based on values, without attachments
+        unsub_params = url_encode({
+            "token": unsubscribe_token,
+            "user_id": user.id,
+        })
+        unsub_url = url_join(
+            self.get_base_url(),
+            f'/digest/{self.id}/unsubscribe_oneclik?{unsub_params}'
+        )
         mail_values = {
-            'subject': '%s: %s' % (user.company_id.name, self.name),
-            'email_from': self.company_id.partner_id.email_formatted if self.company_id else self.env.user.email_formatted,
-            'email_to': user.email_formatted,
-            'body_html': full_mail,
             'auto_delete': True,
+            'author_id': self.env.user.partner_id.id,
+            'body_html': full_mail,
+            'email_from': (
+                self.company_id.partner_id.email_formatted
+                or self.env.user.email_formatted
+                or self.env.ref('base.user_root').email_formatted
+            ),
+            'email_to': user.email_formatted,
+            # Add headers that allow the MUA to offer a one click button to unsubscribe (requires DKIM to work)
+            'headers': {
+                'List-Unsubscribe': f'<{unsub_url}>',
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+                'X-Auto-Response-Suppress': 'OOF',  # avoid out-of-office replies from MS Exchange
+            },
+            'state': 'outgoing',
+            'subject': '%s: %s' % (user.company_id.name, self.name),
         }
-        mail = self.env['mail.mail'].sudo().create(mail_values)
-        mail.send(raise_exception=False)
+        self.env['mail.mail'].sudo().create(mail_values)
         return True
 
     @api.model
@@ -163,6 +197,14 @@ class Digest(models.Model):
                 digest.action_send()
             except MailDeliveryException as e:
                 _logger.warning('MailDeliveryException while sending digest %d. Digest is now scheduled for next cron update.', digest.id)
+
+    def _get_unsubscribe_token(self, user_id):
+        """Generate a secure hash for this digest and user. It allows to
+        unsubscribe from a digest while keeping some security in that process.
+
+        :param int user_id: ID of the user to unsubscribe
+        """
+        return tools.hmac(self.env(su=True), 'digest-unsubscribe', (self.id, user_id))
 
     # ------------------------------------------------------------
     # KPIS
@@ -234,7 +276,7 @@ class Digest(models.Model):
             '|', ('group_id', 'in', user.groups_id.ids), ('group_id', '=', False)
         ], limit=tips_count)
         tip_descriptions = [
-            self.env['mail.render.mixin'].sudo()._render_template(tools.html_sanitize(tip.tip_description), 'digest.tip', tip.ids, post_process=True, engine="qweb")[tip.id]
+            tools.html_sanitize(self.env['mail.render.mixin'].sudo()._render_template(tip.tip_description, 'digest.tip', tip.ids, post_process=True, engine="qweb")[tip.id])
             for tip in tips
         ]
         if consumed:
@@ -256,7 +298,11 @@ class Digest(models.Model):
         """
         preferences = []
         if self._context.get('digest_slowdown'):
-            preferences.append(_("We have noticed you did not connect these last few days so we've automatically switched your preference to weekly Digests."))
+            _dummy, new_perioridicy_str = self._get_next_periodicity()
+            preferences.append(
+                _("We have noticed you did not connect these last few days. We have automatically switched your preference to %(new_perioridicy_str)s Digests.",
+                  new_perioridicy_str=new_perioridicy_str)
+            )
         elif self.periodicity == 'daily' and user.has_group('base.group_erp_manager'):
             preferences.append(Markup('<p>%s<br /><a href="%s" target="_blank" style="color:#875A7B; font-weight: bold;">%s</a></p>') % (
                 _('Prefer a broader overview ?'),
@@ -266,7 +312,7 @@ class Digest(models.Model):
         if user.has_group('base.group_erp_manager'):
             preferences.append(Markup('<p>%s<br /><a href="%s" target="_blank" style="color:#875A7B; font-weight: bold;">%s</a></p>') % (
                 _('Want to customize this email?'),
-                f'/web#view_type=form&amp;model={self._name}&amp;id={self.id:d}',
+                f'/web#view_type=form&model={self._name}&id={self.id:d}',
                 _('Choose the metrics you care about')
             ))
 
@@ -276,11 +322,11 @@ class Digest(models.Model):
         self.ensure_one()
         if self.periodicity == 'daily':
             delta = relativedelta(days=1)
-        if self.periodicity == 'weekly':
+        elif self.periodicity == 'weekly':
             delta = relativedelta(weeks=1)
         elif self.periodicity == 'monthly':
             delta = relativedelta(months=1)
-        elif self.periodicity == 'quarterly':
+        else:
             delta = relativedelta(months=3)
         return date.today() + delta
 
@@ -318,16 +364,33 @@ class Digest(models.Model):
         return margin
 
     def _check_daily_logs(self):
-        three_days_ago = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - relativedelta(days=3)
+        """ Badly named method that checks user logs and slowdown the sending
+        of digest emails based on recipients being away. """
+        today = datetime.now().replace(microsecond=0)
         to_slowdown = self.env['digest.digest']
-        for digest in self.filtered(lambda digest: digest.periodicity == 'daily'):
+        for digest in self:
+            if digest.periodicity == 'daily':  # 2 days ago
+                limit_dt = today - relativedelta(days=2)
+            elif digest.periodicity == 'weekly':  # 1 week ago
+                limit_dt = today - relativedelta(days=7)
+            elif digest.periodicity == 'monthly':  # 1 month ago
+                limit_dt = today - relativedelta(months=1)
+            elif digest.periodicity == 'quarterly':  # 3 month ago
+                limit_dt = today - relativedelta(months=3)
             users_logs = self.env['res.users.log'].sudo().search_count([
                 ('create_uid', 'in', digest.user_ids.ids),
-                ('create_date', '>=', three_days_ago)
+                ('create_date', '>=', limit_dt)
             ])
             if not users_logs:
                 to_slowdown += digest
         return to_slowdown
+
+    def _get_next_periodicity(self):
+        if self.periodicity == 'daily':
+            return 'weekly', _('weekly')
+        if self.periodicity == 'weekly':
+            return 'monthly', _('monthly')
+        return 'quarterly', _('quarterly')
 
     def _format_currency_amount(self, amount, currency_id):
         pre = currency_id.position == 'before'

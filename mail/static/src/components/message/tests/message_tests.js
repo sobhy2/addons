@@ -315,15 +315,15 @@ QUnit.test("'channel_fetch' notification received is correctly handled", async f
     );
 
     // Simulate received channel fetched notification
-    const notifications = [
-        [['myDB', 'mail.channel', 11], {
-            info: 'channel_fetched',
-            last_message_id: 100,
-            partner_id: 11,
-        }],
-    ];
     await afterNextRender(() => {
-        this.widget.call('bus_service', 'trigger', 'notification', notifications);
+        this.widget.call('bus_service', 'trigger', 'notification', [{
+            type: 'mail.channel.partner/fetched',
+            payload: {
+                channel_id: 11,
+                last_message_id: 100,
+                partner_id: 11,
+            },
+    }]);
     });
 
     assert.containsOnce(
@@ -379,15 +379,15 @@ QUnit.test("'channel_seen' notification received is correctly handled", async fu
     );
 
     // Simulate received channel seen notification
-    const notifications = [
-        [['myDB', 'mail.channel', 11], {
-            info: 'channel_seen',
-            last_message_id: 100,
-            partner_id: 11,
-        }],
-    ];
     await afterNextRender(() => {
-        this.widget.call('bus_service', 'trigger', 'notification', notifications);
+        this.widget.call('bus_service', 'trigger', 'notification', [{
+            type: 'mail.channel.partner/seen',
+            payload: {
+                channel_id: 11,
+                last_message_id: 100,
+                partner_id: 11,
+            },
+        }]);
     });
     assert.containsN(
         document.body,
@@ -443,15 +443,15 @@ QUnit.test("'channel_fetch' notification then 'channel_seen' received  are corre
     );
 
     // Simulate received channel fetched notification
-    let notifications = [
-        [['myDB', 'mail.channel', 11], {
-            info: 'channel_fetched',
-            last_message_id: 100,
-            partner_id: 11,
-        }],
-    ];
     await afterNextRender(() => {
-        this.widget.call('bus_service', 'trigger', 'notification', notifications);
+        this.widget.call('bus_service', 'trigger', 'notification', [{
+            type: 'mail.channel.partner/fetched',
+            payload: {
+                channel_id: 11,
+                last_message_id: 100,
+                partner_id: 11,
+            }
+        }]);
     });
     assert.containsOnce(
         document.body,
@@ -460,15 +460,15 @@ QUnit.test("'channel_fetch' notification then 'channel_seen' received  are corre
     );
 
     // Simulate received channel seen notification
-    notifications = [
-        [['myDB', 'mail.channel', 11], {
-            info: 'channel_seen',
-            last_message_id: 100,
-            partner_id: 11,
-        }],
-    ];
     await afterNextRender(() => {
-        this.widget.call('bus_service', 'trigger', 'notification', notifications);
+        this.widget.call('bus_service', 'trigger', 'notification', [{
+            type: 'mail.channel.partner/seen',
+            payload: {
+                channel_id: 11,
+                last_message_id: 100,
+                partner_id: 11,
+            },
+        }]);
     });
     assert.containsN(
         document.body,
@@ -701,7 +701,7 @@ QUnit.test('allow attachment delete on authored message', async function (assert
     );
 });
 
-QUnit.test('prevent attachment delete on non-authored message', async function (assert) {
+QUnit.test('prevent attachment delete on non-authored message in channels', async function (assert) {
     assert.expect(2);
 
     const { createMessageComponent } = await this.start();
@@ -711,6 +711,10 @@ QUnit.test('prevent attachment delete on non-authored message', async function (
             id: 10,
             name: "BLAH",
             mimetype: 'image/jpeg',
+            originThread: insertAndReplace({
+                id: 11,
+                model: 'mail.channel',
+            }),
         }),
         author: insert({ id: 11, display_name: "Guy" }),
         body: "<p>Test</p>",

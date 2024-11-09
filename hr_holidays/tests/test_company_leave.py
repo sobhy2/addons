@@ -4,7 +4,7 @@
 from datetime import date, datetime
 
 from odoo.tests import tagged
-from odoo.tests.common import TransactionCase
+from odoo.tests.common import TransactionCase, warmup
 
 
 @tagged('company_leave')
@@ -15,6 +15,8 @@ class TestCompanyLeave(TransactionCase):
     def setUpClass(cls):
         super(TestCompanyLeave, cls).setUpClass()
         cls.company = cls.env['res.company'].create({'name': 'A company'})
+        cls.company.resource_calendar_id.tz = "Europe/Brussels"
+
 
         cls.bank_holiday = cls.env['hr.leave.type'].create({
             'name': 'Bank Holiday',
@@ -34,6 +36,7 @@ class TestCompanyLeave(TransactionCase):
         cls.employee = cls.env['hr.employee'].create({
             'name': 'My Employee',
             'company_id': cls.company.id,
+            'tz': "Europe/Brussels",
         })
 
     def test_leave_whole_company_01(self):
@@ -282,6 +285,7 @@ class TestCompanyLeave(TransactionCase):
         self.assertEqual(all_leaves[2].number_of_days, 1)
         self.assertEqual(all_leaves[2].state, 'validate')
 
+    @warmup
     def test_leave_whole_company_07(self):
         # Test Case 7: Try to create a bank holidays for a lot of
         # employees, and check the performances
@@ -297,7 +301,9 @@ class TestCompanyLeave(TransactionCase):
             'employee_id': employee.id,
             'holiday_status_id': self.paid_time_off.id,
             'request_date_from': date(2020, 3, 29),
+            'date_from': datetime(2020, 3, 29, 7, 0, 0),
             'request_date_to': date(2020, 4, 1),
+            'date_to': datetime(2020, 4, 1, 19, 0, 0),
             'number_of_days': 3,
         } for employee in employees[0:15]])
         leaves._compute_date_from_to()
@@ -315,7 +321,7 @@ class TestCompanyLeave(TransactionCase):
         })
         company_leave._compute_date_from_to()
 
-        with self.assertQueryCount(__system__=870, admin=865):
+        with self.assertQueryCount(__system__=830):  # 770 community
             # Original query count: 1987
             # Without tracking/activity context keys: 5154
             company_leave.action_validate()

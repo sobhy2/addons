@@ -5,10 +5,16 @@ from odoo import _, api, fields, models
 
 
 FUEL_TYPES = [
-    ('gasoline', 'Gasoline'), ('diesel', 'Diesel'), ('lpg', 'LPG'),
-    ('electric', 'Electric'), ('hybrid', 'Hybrid'), ('plug_in_hybrid_diesel', 'Plug-in Hybrid Diesel'),
-    ('plug_in_hybrid_gasoline', 'Plug-in Hybrid Gasoline'), ('full_hybrid_gasoline', 'Full Hybrid Gasoline'),
-    ('cng', 'CNG'), ('hydrogen', 'Hydrogen'),
+    ('diesel', 'Diesel'),
+    ('gasoline', 'Gasoline'),
+    ('hybrid', 'Hybrid Diesel'),
+    ('full_hybrid_gasoline', 'Hybrid Gasoline'),
+    ('plug_in_hybrid_diesel', 'Plug-in Hybrid Diesel'),
+    ('plug_in_hybrid_gasoline', 'Plug-in Hybrid Gasoline'),
+    ('cng', 'CNG'),
+    ('lpg', 'LPG'),
+    ('hydrogen', 'Hydrogen'),
+    ('electric', 'Electric'),
 ]
 
 class FleetVehicleModel(models.Model):
@@ -32,7 +38,7 @@ class FleetVehicleModel(models.Model):
     trailer_hook = fields.Boolean(default=False, string='Trailer Hitch')
     default_co2 = fields.Float('CO2 Emissions')
     co2_standard = fields.Char()
-    default_fuel_type = fields.Selection(FUEL_TYPES, 'Fuel Type', default='diesel')
+    default_fuel_type = fields.Selection(FUEL_TYPES, 'Fuel Type', default='electric')
     power = fields.Integer('Power')
     horsepower = fields.Integer()
     horsepower_tax = fields.Float('Horsepower Taxation')

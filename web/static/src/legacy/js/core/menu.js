@@ -1,5 +1,7 @@
 /** @odoo-module **/
 
+const BREAKPOINT_SIZES = ['sm', 'md', 'lg', 'xl'];
+
 /**
  * Creates an automatic 'more' dropdown-menu for a set of navbar items.
  *
@@ -19,20 +21,38 @@ export async function initAutoMoreMenu(el, options) {
     if (!el) {
         return;
     }
+    const navbar = el.closest('.navbar');
+    const computedStyles = window.getComputedStyle(el);
+    // Get breakpoint related information from the navbar to correctly handle
+    // the "auto-hide" on mobile menu.
+    const [breakpoint = 'md'] = navbar ? BREAKPOINT_SIZES
+        .filter(suffix => navbar.classList.contains(`navbar-expand-${suffix}`)) : [];
+    const isNoHamburgerMenu = !!navbar && navbar.classList.contains('navbar-expand');
+
     options = Object.assign({
         unfoldable: 'none',
         maxWidth: false,
-        minSize: '767',
+        minSize: computedStyles.getPropertyValue(`--breakpoint-${breakpoint}`),
         images: [],
         loadingStyleClasses: [],
     }, options || {});
 
     const isUserNavbar = el.parentElement.classList.contains('o_main_navbar');
-    const dropdownSubMenuClasses = ['show', 'border', 'position-static'];
+    const dropdownSubMenuClasses = ['show', 'border-0', 'position-static'];
+    const dropdownToggleClasses = ['h-auto', 'py-2', 'text-secondary'];
     var autoMarginLeftRegex = /\bm[lx]?(?:-(?:sm|md|lg|xl))?-auto\b/;
     var autoMarginRightRegex = /\bm[rx]?(?:-(?:sm|md|lg|xl))?-auto\b/;
     var extraItemsToggle = null;
     let debounce;
+    const afterFontsloading = new Promise((resolve) => {
+        if (document.fonts) {
+            document.fonts.ready.then(resolve);
+        } else {
+            // IE: don't wait more than max .15s.
+            setTimeout(resolve, 150);
+        }
+    });
+    afterFontsloading.then(_adapt);
 
     if (options.images.length) {
         await _afterImagesLoading(options.images);
@@ -44,7 +64,6 @@ export async function initAutoMoreMenu(el, options) {
         debounce = setTimeout(_adapt, 250);
     };
     window.addEventListener('resize', debouncedAdapt);
-    _adapt();
 
     el.addEventListener('dom:autoMoreMenu:adapt', _adapt);
     el.addEventListener('dom:autoMoreMenu:destroy', destroy, {once: true});
@@ -63,8 +82,12 @@ export async function initAutoMoreMenu(el, options) {
             } else {
                 item.classList.remove('dropdown-item');
                 const dropdownSubMenu = item.querySelector('.dropdown-menu');
+                const dropdownSubMenuButton = item.querySelector('.dropdown-toggle');
                 if (dropdownSubMenu) {
                     dropdownSubMenu.classList.remove(...dropdownSubMenuClasses);
+                }
+                if (dropdownSubMenuButton) {
+                    dropdownSubMenuButton.classList.remove(...dropdownToggleClasses);
                 }
             }
             el.insertBefore(item, extraItemsToggle);
@@ -74,6 +97,7 @@ export async function initAutoMoreMenu(el, options) {
     }
 
     function _adapt() {
+        el.dispatchEvent(new Event("autoMoreMenu.willAdapt", {bubbles: true}));
         if (options.loadingStyleClasses.length) {
             el.classList.add(...options.loadingStyleClasses);
         }
@@ -81,7 +105,7 @@ export async function initAutoMoreMenu(el, options) {
 
         // Ignore invisible/toggleable top menu element & small viewports.
         if (!el.getClientRects().length || el.closest('.show')
-            || window.matchMedia(`(max-width: ${options.minSize}px)`).matches) {
+            || (window.matchMedia(`(max-width: ${options.minSize})`).matches && !isNoHamburgerMenu)) {
             return _endAutoMoreMenu();
         }
 
@@ -127,9 +151,13 @@ export async function initAutoMoreMenu(el, options) {
                 navLink.classList.toggle('active', el.classList.contains('active'));
             } else {
                 const dropdownSubMenu = el.querySelector('.dropdown-menu');
-                el.classList.add('dropdown-item');
+                const dropdownSubMenuButton = el.querySelector('.dropdown-toggle');
+                el.classList.add('dropdown-item', 'p-0');
                 if (dropdownSubMenu) {
                     dropdownSubMenu.classList.add(...dropdownSubMenuClasses);
+                }
+                if (dropdownSubMenuButton) {
+                    dropdownSubMenuButton.classList.add(...dropdownToggleClasses);
                 }
             }
             dropdownMenu.appendChild(el);
@@ -141,10 +169,11 @@ export async function initAutoMoreMenu(el, options) {
         var rect = el.getBoundingClientRect();
         var style = window.getComputedStyle(el);
         var outerWidth = rect.right - rect.left;
-        if (mLeft !== false && (considerAutoMargins || !autoMarginLeftRegex.test(el.getAttribute('class')))) {
+        const isRTL = style.direction === 'rtl';
+        if (mLeft !== false && (considerAutoMargins || !(isRTL ? autoMarginRightRegex : autoMarginLeftRegex).test(el.getAttribute('class')))) {
             outerWidth += parseFloat(style.marginLeft);
         }
-        if (mRight !== false && (considerAutoMargins || !autoMarginRightRegex.test(el.getAttribute('class')))) {
+        if (mRight !== false && (considerAutoMargins || !(isRTL ? autoMarginLeftRegex : autoMarginRightRegex).test(el.getAttribute('class')))) {
             outerWidth += parseFloat(style.marginRight);
         }
         // Would be NaN for invisible elements for example
@@ -152,8 +181,8 @@ export async function initAutoMoreMenu(el, options) {
     }
 
     function _addExtraItemsButton(target) {
-        let dropdownMenu = document.createElement('ul');
-        extraItemsToggle = document.createElement('li');
+        let dropdownMenu = document.createElement('div');
+        extraItemsToggle = dropdownMenu.cloneNode();
         const extraItemsToggleIcon = document.createElement('i');
         const extraItemsToggleLink = document.createElement('a');
 
@@ -163,7 +192,7 @@ export async function initAutoMoreMenu(el, options) {
         Object.entries({
             role: 'button',
             href: '#',
-            class: 'nav-link dropdown-toggle o-no-caret',
+            class: 'nav-link dropdown-toggle o-no-caret o_extra_menu_items_toggle',
             'data-toggle': 'dropdown',
             'aria-expanded': false,
         }).forEach(([key, value]) => {
@@ -174,6 +203,16 @@ export async function initAutoMoreMenu(el, options) {
         extraItemsToggle.appendChild(extraItemsToggleLink);
         extraItemsToggle.appendChild(dropdownMenu);
         el.insertBefore(extraItemsToggle, target);
+        // TODO Adapt in 16.0: The dropdown menu is closed when clicking inside
+        // the extra menu items. The goal here is to prevent this default
+        // behaviour on "edit" mode to allow correct editing of extra menu
+        // items, mega menu content... This should be simply replaced by the BS5
+        // `autoClose` option.
+        if (window.jQuery && document.body.classList.contains("editor_enable")) {
+            $(extraItemsToggle).on("hide.bs.dropdown", e => {
+                return !e.clickEvent || !e.clickEvent.target.closest(".o_extra_menu_items");
+            });
+        }
         return dropdownMenu;
     }
 

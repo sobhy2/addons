@@ -3,17 +3,19 @@
 # 	* survey
 # 
 # Translators:
-# Martin Trigaux, 2021
-# Sanne Kristensen <sanne@vkdata.dk>, 2021
+# Mads Søndergaard, 2022
+# Lucas Holm, 2023
+# Sanne Kristensen <sanne@vkdata.dk>, 2024
+# Martin Trigaux, 2024
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~14.5\n"
+"Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-09-14 10:28+0000\n"
+"POT-Creation-Date: 2024-08-14 15:42+0000\n"
 "PO-Revision-Date: 2021-09-14 12:26+0000\n"
-"Last-Translator: Sanne Kristensen <sanne@vkdata.dk>, 2021\n"
-"Language-Team: Danish (https://www.transifex.com/odoo/teams/41243/da/)\n"
+"Last-Translator: Martin Trigaux, 2024\n"
+"Language-Team: Danish (https://app.transifex.com/odoo/teams/41243/da/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
@@ -179,7 +181,7 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:survey.certification_report_view_classic
 #: model_terms:ir.ui.view,arch_db:survey.certification_report_view_modern
 msgid "<br/>by"
-msgstr ""
+msgstr "<br/>af"
 
 #. module: survey
 #: model:survey.question,description:survey.survey_demo_quiz_p4_q6
@@ -210,19 +212,19 @@ msgid ""
 "        <tbody>\n"
 "            <tr><td>\n"
 "                <!-- We use the logo of the company that created the survey (to handle multi company cases) -->\n"
-"                <a href=\"/\"><img src=\"/logo.png?company=${object.survey_id.create_uid.company_id.id}\" style=\"vertical-align:baseline;max-width:100px;\"/></a>\n"
+"                <a href=\"/\"><img t-attf-src=\"/logo.png?company={{ object.survey_id.create_uid.company_id.id }}\" style=\"vertical-align:baseline;max-width:100px;\"/></a>\n"
 "            </td><td style=\"text-align:right;vertical-align:middle;\">\n"
-"                    Certification: ${object.survey_id.display_name}\n"
+"                    Certification: <t t-out=\"object.survey_id.display_name or ''\">Feedback Form</t>\n"
 "            </td></tr>\n"
 "        </tbody>\n"
 "    </table>\n"
 "    <table style=\"width:600px;margin:0px auto;background:white;border:1px solid #e1e1e1;\">\n"
 "        <tbody>\n"
 "            <tr><td style=\"padding:15px 20px 10px 20px;\">\n"
-"                <p>Dear <span>${object.partner_id.name or 'participant'}</span></p>\n"
+"                <p>Dear <span t-out=\"object.partner_id.name or 'participant'\">participant</span></p>\n"
 "                <p>\n"
 "                    Here is, in attachment, your certification document for\n"
-"                        <strong>${object.survey_id.display_name}</strong>\n"
+"                        <strong t-out=\"object.survey_id.display_name or ''\">Feedback Form</strong>\n"
 "                </p>\n"
 "                <p>Congratulations for succeeding the test!</p>\n"
 "            </td></tr>\n"
@@ -237,53 +239,31 @@ msgstr ""
 msgid ""
 "<div style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
 "    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
-"        Dear ${object.partner_id.name or 'participant'}<br/><br/>\n"
-"        % if object.survey_id.certification:\n"
+"        Dear <t t-out=\"object.partner_id.name or 'participant'\">participant</t><br/><br/>\n"
+"        <t t-if=\"object.survey_id.certification\">\n"
 "            You have been invited to take a new certification.\n"
-"        % else:\n"
+"        </t>\n"
+"        <t t-else=\"\">\n"
 "            We are conducting a survey and your response would be appreciated.\n"
-"        % endif\n"
+"        </t>\n"
 "        <div style=\"margin: 16px 0px 16px 0px;\">\n"
-"            <a href=\"${(object.get_start_url()) | safe}\" style=\"background-color: #875A7B; padding: 8px 16px 8px 16px; text-decoration: none; color: #fff; border-radius: 5px; font-size:13px;\">\n"
-"                % if object.survey_id.certification:\n"
+"            <a t-att-href=\"(object.get_start_url())\" style=\"background-color: #875A7B; padding: 8px 16px 8px 16px; text-decoration: none; color: #fff; border-radius: 5px; font-size:13px;\">\n"
+"                <t t-if=\"object.survey_id.certification\">\n"
 "                    Start Certification\n"
-"                % else:\n"
+"                </t>\n"
+"                <t t-else=\"\">\n"
 "                    Start Survey\n"
-"                % endif\n"
+"                </t>\n"
 "            </a>\n"
 "        </div>\n"
-"        % if object.deadline:\n"
-"            Please answer the survey for ${format_date(object.deadline)}.<br/><br/>\n"
-"        % endif\n"
+"        <t t-if=\"object.deadline\">\n"
+"            Please answer the survey for <t t-out=\"format_date(object.deadline) or ''\">05/05/2021</t>.<br/><br/>\n"
+"        </t>\n"
 "        Thank you for your participation.\n"
 "    </p>\n"
 "</div>\n"
 "            "
 msgstr ""
-"<div style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
-"    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
-"        Hej ${object.partner_id.name or 'participant'}<br/><br/>\n"
-"        % if object.survey_id.certification:\n"
-"            Du er blevet inviteret til at tage en ny certificering.\n"
-"        % else:\n"
-"            Vi foretager en undersøgelse, og ville sætte pris på din besvarelse.\n"
-"        % endif\n"
-"        <div style=\"margin: 16px 0px 16px 0px;\">\n"
-"            <a href=\"${(object.get_start_url()) | safe}\" style=\"background-color: #875A7B; padding: 8px 16px 8px 16px; text-decoration: none; color: #fff; border-radius: 5px; font-size:13px;\">\n"
-"                % if object.survey_id.certification:\n"
-"                    Begynd Certificering\n"
-"                % else:\n"
-"                    Besvar Undersøgelse\n"
-"                % endif\n"
-"            </a>\n"
-"        </div>\n"
-"        % if object.deadline:\n"
-"            Vær venlig at besvare undersøgelsen før ${format_date(object.deadline)}.<br/><br/>\n"
-"        % endif\n"
-"        Tak for din deltagelse.\n"
-"    </p>\n"
-"</div>\n"
-"            "
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_question_form
@@ -618,6 +598,8 @@ msgid ""
 "<span class=\"o_survey_session_answer_count\">0</span>\n"
 "                                     /"
 msgstr ""
+"<span class=\"o_survey_session_answer_count\">0</span>\n"
+"                                     /"
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_session_code
@@ -735,8 +717,8 @@ msgstr ""
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_fill_form
-msgid "A problem has occured"
-msgstr "Der er opstået et problem"
+msgid "A problem has occurred"
+msgstr ""
 
 #. module: survey
 #: code:addons/survey/models/survey_user_input.py:0
@@ -1064,12 +1046,12 @@ msgstr "Efterår"
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__answer_duration_avg
 msgid "Average Duration"
-msgstr ""
+msgstr "Gennemsnitlig varighed"
 
 #. module: survey
 #: model:ir.model.fields,help:survey.field_survey_survey__answer_duration_avg
 msgid "Average duration of the survey (in hours)"
-msgstr ""
+msgstr "Gennemsnitlig varighed af undersøgelsen (i timer)"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__answer_score_avg
@@ -1129,7 +1111,7 @@ msgstr "Kaktus"
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_invite__can_edit_body
 msgid "Can Edit Body"
-msgstr ""
+msgstr "Kan Redigere Krop"
 
 #. module: survey
 #: model:survey.question,title:survey.survey_demo_burger_quiz_p4_q3
@@ -1197,8 +1179,8 @@ msgstr "Certificering skabelon"
 
 #. module: survey
 #: model:mail.template,subject:survey.mail_template_certification
-msgid "Certification: ${object.survey_id.display_name}"
-msgstr "Certificering: ${object.survey_id.display_name}"
+msgid "Certification: {{ object.survey_id.display_name }}"
+msgstr ""
 
 #. module: survey
 #: model:ir.actions.report,name:survey.certification_report
@@ -1729,6 +1711,7 @@ msgstr "Email adresse for afsender"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__description_done
+#: model_terms:ir.ui.view,arch_db:survey.survey_form
 msgid "End Message"
 msgstr "Afslut Besked"
 
@@ -1943,7 +1926,7 @@ msgstr "Hård"
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__has_message
 msgid "Has Message"
-msgstr ""
+msgstr "Har besked"
 
 #. module: survey
 #: model:survey.question.answer,value:survey.vendor_certification_page_1_question_3_choice_2
@@ -2330,7 +2313,7 @@ msgstr "Kun inviterede personer"
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_invite__is_mail_template_editor
 msgid "Is Editor"
-msgstr ""
+msgstr "Er Redaktør"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__message_is_follower
@@ -2744,7 +2727,7 @@ msgstr "Ny invitation"
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__activity_calendar_event_id
 msgid "Next Activity Calendar Event"
-msgstr ""
+msgstr "Næste Aktivitet Kalender Arrangement"
 
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_survey__activity_date_deadline
@@ -2955,13 +2938,13 @@ msgstr "Åben Session Administration"
 msgid ""
 "Optional translation language (ISO code) to select when sending out an "
 "email. If not set, the english version will be used. This should usually be "
-"a placeholder expression that provides the appropriate language, e.g. "
-"${object.partner_id.lang}."
+"a placeholder expression that provides the appropriate language, e.g. {{ "
+"object.partner_id.lang }}."
 msgstr ""
-"Valgfri oversættelses sprog (ISO kode) at vælge når en email sendes. Hvis "
-"ikke angivet, vil den engelske version blive brugt. Dette bør typisk være et"
-" placeholder udtryk der angiver det passende sprog, f.eks. "
-"${objecct.partner_id.lang}."
+"Valgfri oversættelses sprog (ISO kode) til valg ved afsending af en email. "
+"Hvis ikke angivet, vil den engelske udgave blive anvendt. Dette bør "
+"normaltvis være et pladsholder-udtryk der angiver det passende sprog, f.eks."
+" {{ object.partner_id.lang }}."
 
 #. module: survey
 #: model:ir.model.fields,help:survey.field_survey_invite__null_value
@@ -3033,7 +3016,7 @@ msgstr "Delvist"
 
 #. module: survey
 #: model:mail.template,subject:survey.mail_template_user_input_invite
-msgid "Participate to ${object.survey_id.display_name} survey"
+msgid "Participate to {{ object.survey_id.display_name }} survey"
 msgstr ""
 
 #. module: survey
@@ -3165,6 +3148,11 @@ msgid "Progression Mode"
 msgstr "Progression Tilstand"
 
 #. module: survey
+#: model_terms:ir.ui.view,arch_db:survey.survey_invite_view_form
+msgid "Public share URL"
+msgstr ""
+
+#. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_question_answer__question_id
 #: model:ir.model.fields,field_description:survey.field_survey_user_input_line__question_id
 #: model_terms:ir.ui.view,arch_db:survey.survey_question_answer_view_search
@@ -3259,7 +3247,7 @@ msgstr "Registreret"
 #. module: survey
 #: model:ir.model.fields,field_description:survey.field_survey_invite__render_model
 msgid "Rendering Model"
-msgstr ""
+msgstr "Gengivelsesmodel"
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_form
@@ -4399,6 +4387,11 @@ msgid "Upcoming Activities"
 msgstr "Kommende aktiviteter"
 
 #. module: survey
+#: model_terms:ir.ui.view,arch_db:survey.survey_invite_view_form
+msgid "Use template"
+msgstr "Brug skabelon"
+
+#. module: survey
 #: model:ir.model.fields,help:survey.field_survey_question__description
 msgid ""
 "Use this field to add additional explanations about your question or to "
@@ -4742,6 +4735,14 @@ msgstr ""
 "mekanisme."
 
 #. module: survey
+#: code:addons/survey/models/survey_question.py:0
+#, python-format
+msgid ""
+"You cannot delete questions from surveys \"%(survey_names)s\" while live "
+"sessions are in progress."
+msgstr ""
+
+#. module: survey
 #: code:addons/survey/models/survey_survey.py:0
 #, python-format
 msgid ""
@@ -4813,7 +4814,7 @@ msgstr ""
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.gamification_badge_form_view_simplified
 msgid "e.g. Problem Solver"
-msgstr ""
+msgstr "f.eks. Problemløser"
 
 #. module: survey
 #: model_terms:ir.ui.view,arch_db:survey.survey_form

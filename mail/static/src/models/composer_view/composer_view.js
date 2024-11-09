@@ -7,6 +7,8 @@ import { clear, insertAndReplace, link, replace, unlink, unlinkAll } from '@mail
 import { OnChange } from '@mail/model/model_onchange';
 import { addLink, escapeAndCompactTextContent, parseAndTransform } from '@mail/js/utils';
 
+import session from "web.session";
+
 function factory(dependencies) {
 
     class ComposerView extends dependencies['mail.model'] {
@@ -35,6 +37,7 @@ function factory(dependencies) {
          _created() {
             this.onClickCancelLink = this.onClickCancelLink.bind(this);
             this.onClickSaveLink = this.onClickSaveLink.bind(this);
+            this.onClickStopReplying = this.onClickStopReplying.bind(this);
         }
 
         /**
@@ -67,8 +70,12 @@ function factory(dependencies) {
             if (this.messageViewInEditing) {
                 this.messageViewInEditing.stopEditing();
             }
-            if (this.discussAsReplying) {
-                this.discussAsReplying.clearReplyingToMessage();
+            if (this.threadView && this.threadView.replyingToMessageView) {
+                const { threadView } = this;
+                if (this.threadView.thread === this.messaging.inbox) {
+                    this.delete();
+                }
+                threadView.update({ replyingToMessageView: clear() });
             }
         }
 
@@ -164,6 +171,9 @@ function factory(dependencies) {
                 case 'mail.partner':
                     Object.assign(updateData, { mentionedPartners: link(this.activeSuggestedRecord) });
                     break;
+                case 'mail.canned_response':
+                    Object.assign(updateData, { cannedResponses: link(this.activeSuggestedRecord) });
+                    break;
             }
             this.composer.update(updateData);
         }
@@ -201,6 +211,17 @@ function factory(dependencies) {
                 return;
             }
             this.postMessage();
+        }
+
+        /**
+         * Handles click on the "stop replying" button.
+         *
+         * @param {MouseEvent} ev
+         */
+        onClickStopReplying(ev) {
+            this.threadView.update({
+                replyingToMessageView: clear(),
+            });
         }
 
         /**
@@ -259,23 +280,7 @@ function factory(dependencies) {
             if (this.messaging.currentPartner) {
                 composer.thread.unregisterCurrentPartnerIsTyping({ immediateNotify: true });
             }
-            const escapedAndCompactContent = escapeAndCompactTextContent(composer.textInputContent);
-            let body = escapedAndCompactContent.replace(/&nbsp;/g, ' ').trim();
-            // This message will be received from the mail composer as html content
-            // subtype but the urls will not be linkified. If the mail composer
-            // takes the responsibility to linkify the urls we end up with double
-            // linkification a bit everywhere. Ideally we want to keep the content
-            // as text internally and only make html enrichment at display time but
-            // the current design makes this quite hard to do.
-            body = this._generateMentionsLinks(body);
-            body = parseAndTransform(body, addLink);
-            body = this._generateEmojisOnHtml(body);
-            const postData = {
-                attachment_ids: composer.attachments.map(attachment => attachment.id),
-                body,
-                message_type: 'comment',
-                partner_ids: composer.recipients.map(partner => partner.id),
-            };
+            const postData = this._getMessageData();
             const params = {
                 'post_data': postData,
                 'thread_id': composer.thread.id,
@@ -295,8 +300,14 @@ function factory(dependencies) {
                         params.context = { mail_post_autofollow: true };
                     }
                 }
+                if (this.threadView && this.threadView.replyingToMessageView && this.threadView.thread !== this.messaging.inbox) {
+                    postData.parent_id = this.threadView.replyingToMessageView.message.id;
+                }
+                params.context = Object.assign(params.context || {}, session.user_context);
                 const chatter = this.chatter;
-                const discussAsReplying = this.discussAsReplying;
+                const { threadView = {} } = this;
+                const { thread: chatterThread } = this.chatter || {};
+                const { thread: threadViewThread } = threadView;
                 const messageData = await this.env.services.rpc({ route: `/mail/message/post`, params });
                 if (!this.messaging) {
                     return;
@@ -307,20 +318,35 @@ function factory(dependencies) {
                 for (const threadView of message.originThread.threadViews) {
                     // Reset auto scroll to be able to see the newly posted message.
                     threadView.update({ hasAutoScrollOnMessageReceived: true });
+                    threadView.addComponentHint('message-posted', { message });
                 }
-                if (chatter && chatter.exists()) {
-                    chatter.update({ composerView: clear() });
-                    chatter.thread.refreshFollowers();
-                    chatter.thread.fetchAndUpdateSuggestedRecipients();
+                if (chatter && chatter.exists() && chatter.component) {
+                    chatter.component.trigger('o-message-posted');
                 }
-                if (discussAsReplying) {
-                    this.env.services['notification'].notify({
-                        message: _.str.sprintf(this.env._t(`Message posted on "%s"`), message.originThread.displayName),
-                        type: 'info',
-                    });
+                if (chatterThread) {
+                    if (this.exists()) {
+                        this.delete();
+                    }
+                    if (chatterThread.exists()) {
+                        // Load new messages to fetch potential new messages from other users (useful due to lack of auto-sync in chatter).
+                        chatterThread.loadNewMessages();
+                        chatterThread.refreshFollowers();
+                        chatterThread.fetchAndUpdateSuggestedRecipients();
+                    }
                 }
-                if (discussAsReplying && discussAsReplying.exists()) {
-                    discussAsReplying.clearReplyingToMessage();
+                if (threadViewThread) {
+                    if (threadViewThread === this.messaging.inbox) {
+                        if (this.exists()) {
+                            this.delete();
+                        }
+                        this.env.services['notification'].notify({
+                            message: _.str.sprintf(this.env._t(`Message posted on "%s"`), message.originThread.displayName),
+                            type: 'info',
+                        });
+                    }
+                    if (threadView && threadView.exists()) {
+                        threadView.update({ replyingToMessageView: clear() });
+                    }
                 }
                 if (composer.exists()) {
                     composer._reset();
@@ -404,7 +430,8 @@ function factory(dependencies) {
             body = this._generateEmojisOnHtml(body);
             let data = {
                 body: body,
-                attachment_ids: composer.attachments.concat(this.messageViewInEditing.message.originThread.attachments).map(attachment => attachment.id),
+                attachment_ids: composer.attachments.concat(this.messageViewInEditing.message.attachments).map(attachment => attachment.id),
+                attachment_tokens: composer.attachments.concat(this.messageViewInEditing.message.attachments).map(attachment => attachment.accessToken),
             };
             try {
                 composer.update({ isPostingMessage: true });
@@ -464,14 +491,17 @@ function factory(dependencies) {
          * @returns {FieldCommand}
          */
         _computeComposer() {
-            if (this.threadView && this.threadView.thread && this.threadView.thread.composer) {
-                return replace(this.threadView.thread.composer);
+            if (this.threadView) {
+                // When replying to a message, always use the composer from that message's thread
+                if (this.threadView && this.threadView.replyingToMessageView) {
+                    return replace(this.threadView.replyingToMessageView.message.originThread.composer);
+                }
+                if (this.threadView.thread && this.threadView.thread.composer) {
+                    return replace(this.threadView.thread.composer);
+                }
             }
             if (this.messageViewInEditing && this.messageViewInEditing.composerForEditing) {
                 return replace(this.messageViewInEditing.composerForEditing);
-            }
-            if (this.discussAsReplying && this.discussAsReplying.replyingToMessage && this.discussAsReplying.replyingToMessage.originThread && this.discussAsReplying.replyingToMessage.originThread.composer) {
-                return replace(this.discussAsReplying.replyingToMessage.originThread.composer);
             }
             if (this.chatter && this.chatter.thread && this.chatter.thread.composer) {
                 return replace(this.chatter.thread.composer);
@@ -498,6 +528,14 @@ function factory(dependencies) {
          * @private
          * @return {boolean}
          */
+        _computeHasDropZone() {
+            return true;
+        }
+
+        /**
+         * @private
+         * @return {boolean}
+         */
         _computeHasSuggestions() {
             return this.mainSuggestedRecords.length > 0 || this.extraSuggestedRecords.length > 0;
         }
@@ -512,6 +550,22 @@ function factory(dependencies) {
             if (this.suggestionDelimiterPosition === undefined) {
                 return unlinkAll();
             }
+        }
+
+        /**
+         * @private
+         * @returns {string}
+         */
+        _computeSendButtonText() {
+            if (
+                this.composer &&
+                this.composer.isLog &&
+                this.composer.activeThread &&
+                this.composer.activeThread.model !== 'mail.channel'
+            ) {
+                return this.env._t("Log");
+            }
+            return this.env._t("Send");
         }
 
         /**
@@ -682,6 +736,34 @@ function factory(dependencies) {
         }
 
         /**
+         * Gather data for message post.
+         *
+         * @private
+         * @returns {Object}
+         */
+        _getMessageData() {
+            const escapedAndCompactContent = escapeAndCompactTextContent(this.composer.textInputContent);
+            let body = escapedAndCompactContent.replace(/&nbsp;/g, ' ').trim();
+            // This message will be received from the mail composer as html content
+            // subtype but the urls will not be linkified. If the mail composer
+            // takes the responsibility to linkify the urls we end up with double
+            // linkification a bit everywhere. Ideally we want to keep the content
+            // as text internally and only make html enrichment at display time but
+            // the current design makes this quite hard to do.
+            body = this._generateMentionsLinks(body);
+            body = parseAndTransform(body, addLink);
+            body = this._generateEmojisOnHtml(body);
+            return {
+                attachment_ids: this.composer.attachments.map(attachment => attachment.id),
+                attachment_tokens: this.composer.attachments.map(attachment => attachment.accessToken),
+                body,
+                message_type: 'comment',
+                partner_ids: this.composer.recipients.map(partner => partner.id),
+                canned_response_ids: this.composer.cannedResponses.map(response => response.id),
+            };
+        }
+
+        /**
          * Handles change of this composer. Useful to reset the state of the
          * composer text input.
          */
@@ -762,7 +844,7 @@ function factory(dependencies) {
                 }
                 const Model = this.messaging.models[this.suggestionModelName];
                 const searchTerm = this.suggestionSearchTerm;
-                await this.async(() => Model.fetchSuggestions(searchTerm, { thread: this.composer.activeThread }));
+                await Model.fetchSuggestions(searchTerm, { thread: this.composer.activeThread });
                 if (!this.exists()) {
                     return;
                 }
@@ -853,15 +935,6 @@ function factory(dependencies) {
             required: true,
         }),
         /**
-         * Instance of discuss if this composer is used as the reply composer
-         * from Inbox. This field is computed from the inverse relation and
-         * should be considered read-only.
-         */
-        discussAsReplying: one2one('mail.discuss', {
-            inverse: 'replyingToMessageComposerView',
-            readonly: true,
-        }),
-        /**
          * Determines whether this composer should be focused at next render.
          */
         doFocus: attr(),
@@ -873,6 +946,9 @@ function factory(dependencies) {
          */
         extraSuggestedRecords: many2many('mail.model', {
             compute: '_computeExtraSuggestedRecords',
+        }),
+        hasDropZone: attr({
+            compute: '_computeHasDropZone',
         }),
         hasFocus: attr({
             default: false,
@@ -907,6 +983,12 @@ function factory(dependencies) {
         messageViewInEditing: one2one('mail.message_view', {
             inverse: 'composerViewInEditing',
             readonly: true,
+        }),
+        /**
+         * Determines the label on the send button of this composer view.
+         */
+        sendButtonText: attr({
+            compute: '_computeSendButtonText',
         }),
         /**
          * States which type of suggestion is currently in progress, if any.
@@ -946,7 +1028,7 @@ function factory(dependencies) {
             readonly: true,
         }),
     };
-    ComposerView.identifyingFields = [['threadView', 'discussAsReplying', 'messageViewInEditing', 'chatter']];
+    ComposerView.identifyingFields = [['threadView', 'messageViewInEditing', 'chatter']];
     ComposerView.onChanges = [
         new OnChange({
             dependencies: ['composer'],

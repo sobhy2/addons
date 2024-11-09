@@ -5,6 +5,7 @@ from odoo.addons.stock_landed_costs.tests.common import TestStockLandedCostsComm
 from odoo.addons.stock_landed_costs.tests.test_stockvaluationlayer import TestStockValuationLCCommon
 from odoo.addons.stock_account.tests.test_stockvaluation import _create_accounting_data
 
+from odoo.fields import Date
 from odoo.tests import tagged, Form
 
 
@@ -69,6 +70,8 @@ class TestLandedCosts(TestStockLandedCostsCommon):
         #         3.transportation    250       By Weight
         #         4.packaging         20        By Volume
 
+        self.landed_cost.categ_id.property_valuation = 'real_time'
+
         # Process incoming shipment
         income_ship = self._process_incoming_shipment()
         # Create landed costs
@@ -98,6 +101,57 @@ class TestLandedCosts(TestStockLandedCostsCommon):
             [('move_id', '=', stock_landed_cost.account_move_id.id)], ['debit', 'credit', 'move_id'], ['move_id'])[0]
         self.assertEqual(account_entry['debit'], account_entry['credit'], 'Debit and credit are not equal')
         self.assertEqual(account_entry['debit'], 430.0, 'Wrong Account Entry')
+
+    def test_00_landed_costs_on_incoming_shipment_without_real_time(self):
+        chart_of_accounts = self.env.company.chart_template_id
+        generic_coa = self.env.ref('l10n_generic_coa.configurable_chart_template')
+        if chart_of_accounts != generic_coa:
+            raise unittest.SkipTest('Skip this test as it works only with %s (%s loaded)' % (generic_coa.name, chart_of_accounts.name))
+        """ Test landed cost on incoming shipment """
+        #
+        # (A) Purchase product
+
+        #         Services           Quantity       Weight      Volume
+        #         -----------------------------------------------------
+        #         1. Refrigerator         5            10          1
+        #         2. Oven                 10           20          1.5
+
+        # (B) Add some costs on purchase
+
+        #         Services           Amount     Split Method
+        #         -------------------------------------------
+        #         1.labour            10        By Equal
+        #         2.brokerage         150       By Quantity
+        #         3.transportation    250       By Weight
+        #         4.packaging         20        By Volume
+
+        self.product_refrigerator.write({"categ_id": self.categ_manual_periodic.id})
+        self.product_oven.write({"categ_id": self.categ_manual_periodic.id})
+        # Process incoming shipment
+        income_ship = self._process_incoming_shipment()
+        # Create landed costs
+        stock_landed_cost = self._create_landed_costs({
+            'equal_price_unit': 10,
+            'quantity_price_unit': 150,
+            'weight_price_unit': 250,
+            'volume_price_unit': 20}, income_ship)
+        # Compute landed costs
+        stock_landed_cost.compute_landed_cost()
+
+        valid_vals = {
+            'equal': 5.0,
+            'by_quantity_refrigerator': 50.0,
+            'by_quantity_oven': 100.0,
+            'by_weight_refrigerator': 50.0,
+            'by_weight_oven': 200,
+            'by_volume_refrigerator': 5.0,
+            'by_volume_oven': 15.0}
+
+        # Check valuation adjustment line recognized or not
+        self._validate_additional_landed_cost_lines(stock_landed_cost, valid_vals)
+        # Validate the landed cost.
+        stock_landed_cost.button_validate()
+        self.assertFalse(stock_landed_cost.account_move_id)
 
     def test_01_negative_landed_costs_on_incoming_shipment(self):
         """ Test negative landed cost on incoming shipment """
@@ -129,6 +183,8 @@ class TestLandedCosts(TestStockLandedCostsCommon):
         #         2.brokerage         -50       By Quantity
         #         3.transportation    -50       By Weight
         #         4.packaging         -5        By Volume
+
+        self.landed_cost.categ_id.property_valuation = 'real_time'
 
         # Process incoming shipment
         income_ship = self._process_incoming_shipment()
@@ -364,3 +420,70 @@ class TestLandedCostsWithPurchaseAndInv(TestStockValuationLCCommon):
         # Check nothing was posted in the price difference account
         price_diff_aml = self.env['account.move.line'].search([('account_id','=', self.price_diff_account.id), ('move_id', '=', move.id)])
         self.assertEqual(len(price_diff_aml), 0, "No line should have been generated in the price difference account.")
+
+    def test_invoice_after_lc_amls(self):
+        self.env.company.anglo_saxon_accounting = True
+        self.landed_cost.landed_cost_ok = True
+        self.landed_cost.categ_id.property_cost_method = 'fifo'
+        self.landed_cost.categ_id.property_valuation = 'real_time'
+
+        # Create PO
+        po = self.env['purchase.order'].create({
+            'partner_id': self.partner_a.id,
+            'currency_id': self.company_data['currency'].id,
+            'order_line': [
+                (0, 0, {
+                    'name': self.product_a.name,
+                    'product_id': self.product_a.id,
+                    'product_qty': 1.0,
+                    'product_uom': self.product_a.uom_po_id.id,
+                    'price_unit': 100.0,
+                    'taxes_id': False,
+                }),
+                (0, 0, {
+                    'name': self.landed_cost.name,
+                    'product_id': self.landed_cost.id,
+                    'product_qty': 1.0,
+                    'price_unit': 100.0,
+                }),
+            ],
+        })
+        po.button_confirm()
+
+        receipt = po.picking_ids
+        receipt.move_lines.quantity_done = 1
+        receipt.button_validate()
+        po.order_line[1].qty_received = 1
+
+        po.action_create_invoice()
+        bill = po.invoice_ids
+
+        # Create and validate LC
+        lc = self.env['stock.landed.cost'].create(dict(
+            picking_ids=[(6, 0, [receipt.id])],
+            account_journal_id=self.stock_journal.id,
+            cost_lines=[
+                (0, 0, {
+                    'name': 'equal split',
+                    'split_method': 'equal',
+                    'price_unit': 100,
+                    'product_id': self.landed_cost.id,
+                }),
+            ],
+        ))
+        lc.compute_landed_cost()
+        lc.button_validate()
+
+        user = self.env['res.users'].create({
+            'name': 'User h',
+            'login': 'usher',
+            'email': 'usher@yourcompany.com',
+            'groups_id': [(6, 0, [self.env.ref('account.group_account_invoice').id])]
+        })
+        # Post the bill
+        bill.landed_costs_ids = [(6, 0, lc.id)]
+        bill.invoice_date = Date.today()
+        bill.with_user(user)._post()
+
+        landed_cost_aml = bill.invoice_line_ids.filtered(lambda l: l.product_id == self.landed_cost)
+        self.assertTrue(landed_cost_aml.reconciled)

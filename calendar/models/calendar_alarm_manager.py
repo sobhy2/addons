@@ -3,6 +3,7 @@
 
 import logging
 from datetime import timedelta
+from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 from odoo.tools import plaintext2html
@@ -146,6 +147,7 @@ class AlarmManager(models.AbstractModel):
         design. The attendees receive an invitation for any new event
         already.
         """
+        lastcall = self.env.context.get('lastcall', False) or fields.date.today() - relativedelta(weeks=1)
         self.env.cr.execute('''
             SELECT "alarm"."id", "event"."id"
               FROM "calendar_event" AS "event"
@@ -158,7 +160,7 @@ class AlarmManager(models.AbstractModel):
                AND "event"."active"
                AND "event"."start" - CAST("alarm"."duration" || ' ' || "alarm"."interval" AS Interval) >= %s
                AND "event"."start" - CAST("alarm"."duration" || ' ' || "alarm"."interval" AS Interval) < now() at time zone 'utc'
-             )''', [alarm_type, self.env.context['lastcall']])
+             )''', [alarm_type, lastcall])
 
         events_by_alarm = {}
         for alarm_id, event_id in self.env.cr.fetchall():
@@ -180,7 +182,8 @@ class AlarmManager(models.AbstractModel):
             alarm_attendees = attendees.filtered(lambda attendee: attendee.event_id.id in events_by_alarm[alarm.id])
             alarm_attendees.with_context(
                 mail_notify_force_send=True,
-                calendar_template_ignore_recurrence=True
+                calendar_template_ignore_recurrence=True,
+                mail_notify_author=True
             )._send_mail_to_attendees(
                 alarm.mail_template_id,
                 force_send=True
@@ -233,6 +236,6 @@ class AlarmManager(models.AbstractModel):
         users = self.env['res.users'].search([('partner_id', 'in', tuple(partner_ids))])
         for user in users:
             notif = self.with_user(user).with_context(allowed_company_ids=user.company_ids.ids).get_next_notif()
-            notifications.append([(self._cr.dbname, 'calendar.alarm', user.partner_id.id), notif])
+            notifications.append([user.partner_id, 'calendar.alarm', notif])
         if len(notifications) > 0:
-            self.env['bus.bus'].sendmany(notifications)
+            self.env['bus.bus']._sendmany(notifications)

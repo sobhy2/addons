@@ -5,15 +5,17 @@
 # Translators:
 # Martin Trigaux, 2021
 # Erwin van der Ploeg <erwin@odooexperts.nl>, 2021
+# Jolien De Paepe, 2023
+# Wil Odoo, 2024
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~14.5\n"
+"Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-09-14 10:28+0000\n"
+"POT-Creation-Date: 2024-08-14 15:42+0000\n"
 "PO-Revision-Date: 2021-09-14 12:25+0000\n"
-"Last-Translator: Erwin van der Ploeg <erwin@odooexperts.nl>, 2021\n"
-"Language-Team: Dutch (https://www.transifex.com/odoo/teams/41243/nl/)\n"
+"Last-Translator: Wil Odoo, 2024\n"
+"Language-Team: Dutch (https://app.transifex.com/odoo/teams/41243/nl/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
@@ -39,8 +41,8 @@ msgid ""
 "<span attrs=\"{'invisible': [('on_time_rate', '&gt;=', 0)]}\">No On-time "
 "Delivery Data</span>"
 msgstr ""
-"<span attrs=\"{'invisible': [('on_time_rate', '&gt;=', 0)]}\">Geen tijdige "
-"leveringsgegevens</span>"
+"<span attrs=\"{'invisible': [('on_time_rate', '&gt;=', 0)]}\">Geen gegevens "
+"over leverbetrouwbaarheid</span>"
 
 #. module: purchase_stock
 #: model_terms:ir.ui.view,arch_db:purchase_stock.res_config_settings_view_form_stock
@@ -270,7 +272,7 @@ msgid ""
 msgstr ""
 "Voor het product %s is het magazijn van het bewerkingstype (%s) niet "
 "consistent met de locatie (%s) van de aanvulregel (%s). Wijzig het type "
-"bewerking of annuleer de offerteaanvraag."
+"bewerking of annuleer de inkoop offerteaanvraag."
 
 #. module: purchase_stock
 #: model:ir.model.fields,field_description:purchase_stock.field_purchase_order_line__forecasted_issue
@@ -380,8 +382,8 @@ msgstr "Minimale voorraadregel"
 
 #. module: purchase_stock
 #: model_terms:ir.ui.view,arch_db:purchase_stock.res_config_settings_view_form_stock
-msgid "Move forward expected delivery dates by"
-msgstr "Verschuif geplande leverdatum vooruit met"
+msgid "Move forward expected request creation date by"
+msgstr "Verplaats de verwachte aanmaakdatum van het verzoek met"
 
 #. module: purchase_stock
 #: model_terms:ir.ui.view,arch_db:purchase_stock.exception_on_po
@@ -394,7 +396,7 @@ msgid "No data yet"
 msgstr "Nog geen gegevens"
 
 #. module: purchase_stock
-#: code:addons/purchase_stock/models/account_invoice.py:0
+#: code:addons/purchase_stock/models/stock.py:0
 #, python-format
 msgid ""
 "Odoo is not able to generate the anglo saxon entries. The total valuation of"
@@ -406,7 +408,7 @@ msgstr ""
 #. module: purchase_stock
 #: model_terms:ir.ui.view,arch_db:purchase_stock.vendor_delay_report_view_graph
 msgid "On-Time Delivery"
-msgstr "Op-tijd levering"
+msgstr "Leverbetrouwbaarheid"
 
 #. module: purchase_stock
 #: model:ir.model.fields,field_description:purchase_stock.field_purchase_order__on_time_rate
@@ -414,7 +416,7 @@ msgstr "Op-tijd levering"
 #: model:ir.model.fields,field_description:purchase_stock.field_res_users__on_time_rate
 #: model:ir.model.fields,field_description:purchase_stock.field_vendor_delay_report__on_time_rate
 msgid "On-Time Delivery Rate"
-msgstr "Op-tijd leveringscore"
+msgstr "Leverbetrouwbaarheidsscore"
 
 #. module: purchase_stock
 #: model:ir.model.fields,field_description:purchase_stock.field_vendor_delay_report__qty_on_time
@@ -425,7 +427,7 @@ msgstr "Op-tijd hoeveelheid"
 #: model:ir.actions.act_window,name:purchase_stock.action_purchase_vendor_delay_report
 #: model_terms:ir.ui.view,arch_db:purchase_stock.vendor_delay_report_filter
 msgid "On-time Delivery"
-msgstr "Op-tijd levering"
+msgstr "Leverbetrouwbaarheid leverancier"
 
 #. module: purchase_stock
 #: model_terms:ir.ui.view,arch_db:purchase_stock.res_partner_view_purchase_buttons_inherit
@@ -442,11 +444,13 @@ msgstr "Aanvulregel"
 #: model:ir.model.fields,help:purchase_stock.field_res_partner__on_time_rate
 #: model:ir.model.fields,help:purchase_stock.field_res_users__on_time_rate
 msgid ""
-"Over the past 12 months; the number of products received on time divided by "
-"the number of ordered products."
+"Over the past x days; the number of products received on time divided by the"
+" number of ordered products.x is either the System Parameter "
+"purchase_stock.on_time_delivery_days or the default 365"
 msgstr ""
-"In de afgelopen 12 maanden; het aantal op tijd ontvangen producten gedeeld "
-"door het aantal bestelde producten."
+"Over de afgelopen x dagen; het aantal op tijd ontvangen producten gedeeld "
+"door het aantal bestelde producten. x is ofwel de systeemparameter "
+"purchase_stock.on_time_delivery_days of de standaard 365"
 
 #. module: purchase_stock
 #. openerp-web
@@ -456,6 +460,7 @@ msgid "Process all the receipt quantities."
 msgstr "Verwerk alle ontvangsthoeveelheden."
 
 #. module: purchase_stock
+#: model:ir.model,name:purchase_stock.model_procurement_group
 #: model:ir.model.fields,field_description:purchase_stock.field_purchase_order__group_id
 msgid "Procurement Group"
 msgstr "Aanvulgroep"
@@ -563,7 +568,7 @@ msgstr "Vraag je leveranciers om direct te leveren aan je klanten"
 #. module: purchase_stock
 #: model_terms:ir.ui.view,arch_db:purchase_stock.purchase_report_product_product_replenishment
 msgid "Requests for quotation"
-msgstr "Offerteaanvraag"
+msgstr "Inkoop offerteaanvraag"
 
 #. module: purchase_stock
 #: model:ir.model.fields,field_description:purchase_stock.field_purchase_order_line__move_ids
@@ -583,8 +588,12 @@ msgstr "Routes"
 
 #. module: purchase_stock
 #: model_terms:ir.ui.view,arch_db:purchase_stock.res_config_settings_view_form_stock
-msgid "Schedule receivings earlier to avoid delays"
-msgstr "Plan ontvangsten eerder om vertragingen te voorkomen"
+msgid ""
+"Schedule automatically generated request for quotations earlier to avoid "
+"delays"
+msgstr ""
+"Plan automatisch gegenereerde offerteaanvragen eerder in om vertragingen te "
+"voorkomen"
 
 #. module: purchase_stock
 #: model_terms:ir.ui.view,arch_db:purchase_stock.product_supplierinfo_replenishment_tree_view
@@ -693,7 +702,7 @@ msgid ""
 msgstr ""
 "Dit voegt een dropshipping-route toe, welke toegepast kan worden op "
 "producten om je leveranciers te vragen om direct aan je klanten te leveren. "
-"Een dropship product genereert een inkoopofferteaanvraag zodra de "
+"Een dropship product genereert een inkoop offerteaanvraag zodra de "
 "verkooporder is bevestigd. Het proces is compleet gebaseerd op vraag. Het "
 "afleveradres is het afleveradres van de klant en niet van je magazijn."
 
@@ -766,7 +775,7 @@ msgstr "Levertijd van leverancier"
 #. module: purchase_stock
 #: model_terms:ir.actions.act_window,help:purchase_stock.action_purchase_vendor_delay_report
 msgid "Vendor On-time Delivery analysis"
-msgstr "Leverancier opt-tijd leveranalyse"
+msgstr "Leverbetrouwbaarheidsanalyse"
 
 #. module: purchase_stock
 #: model:ir.model.fields,help:purchase_stock.field_stock_warehouse_orderpoint__vendor_id
@@ -791,10 +800,12 @@ msgstr ""
 #, python-format
 msgid ""
 "When products are needed in <b>%s</b>, <br/> a request for quotation is "
-"created to fulfill the need."
+"created to fulfill the need.<br/>Note: This rule will be used in combination"
+" with the rules<br/>of the reception route(s)"
 msgstr ""
-"Wanneer producten benodigd zijn in <b>%s</b>, <br/> wordt een "
-"inkooporderaanvraag aangemaakt om dit mogelijk te maken."
+"Wanneer producten nodig zijn in <b>%s</b>, <br/> wordt een offerteaanvraag "
+"aangemaakt om in de behoefte te voorzien.<br/>Opgelet: Deze regel wordt "
+"gebruikt in combinatie met de regels<br/>van de ontvangstroute(s)"
 
 #. module: purchase_stock
 #: code:addons/purchase_stock/models/purchase.py:0

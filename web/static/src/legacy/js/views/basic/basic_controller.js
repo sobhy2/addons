@@ -11,6 +11,7 @@ var AbstractController = require('web.AbstractController');
 var core = require('web.core');
 var Dialog = require('web.Dialog');
 var FieldManagerMixin = require('web.FieldManagerMixin');
+var {Markup} = require('web.utils');
 var TranslationDialog = require('web.TranslationDialog');
 
 var _t = core._t;
@@ -175,9 +176,12 @@ var BasicController = AbstractController.extend(FieldManagerMixin, {
      * @return {Promise}
      */
     saveChanges: async function (recordId) {
+        // waits for _applyChanges to finish
+        await this.mutex.getUnlockedDef();
+
         recordId = recordId || this.handle;
         if (this.isDirty(recordId)) {
-            await Promise.all([this.mutex.getUnlockedDef(), this.savingDef]);
+            await this.savingDef;
             await this.saveRecord(recordId, {
                 stayInEdit: true,
                 reload: false,
@@ -592,9 +596,8 @@ var BasicController = AbstractController.extend(FieldManagerMixin, {
         warnings.push('</ul>');
         this.displayNotification({
             title: _t("Invalid fields:"),
-            message: warnings.join(''),
+            message: Markup(warnings.join('')),
             type: 'danger',
-            messageIsHtml: true, // dynamic parts of the message are escaped above
         });
     },
     /**
@@ -963,6 +966,7 @@ var BasicController = AbstractController.extend(FieldManagerMixin, {
             isComingFromTranslationAlert: ev.data.isComingFromTranslationAlert,
             isText: result.context.translation_type === 'text',
             showSrc: result.context.translation_show_src,
+            node: ev.target && ev.target.__node,
         });
         return this.translationDialog.open();
     },

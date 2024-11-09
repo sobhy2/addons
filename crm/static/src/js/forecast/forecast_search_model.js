@@ -38,7 +38,7 @@ export class ForecastSearchModel extends SearchModel {
         for (const queryElem of this.query) {
             const searchItem = this.searchItems[queryElem.searchItemId];
             if (searchItem.type === "filter") {
-                const context = makeContext(searchItem.context || {});
+                const context = makeContext([searchItem.context || {}]);
                 if (context.forecast_filter) {
                     forecastFilter = true;
                     break;
@@ -82,7 +82,7 @@ export class ForecastSearchModel extends SearchModel {
                 startMoment = moment.utc(startMoment);
             }
             const format = DATE_FORMAT[type];
-            this.forecastStart = startMoment.format(format);
+            this.forecastStart = startMoment.locale("en").format(format);
         }
         return this.forecastStart;
     }

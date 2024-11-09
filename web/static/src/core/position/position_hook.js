@@ -1,7 +1,11 @@
 /** @odoo-module */
 
-import { useEffect } from "@web/core/utils/hooks";
-import { debounce, throttle } from "../utils/timing";
+import { onDestroyed, useEffect } from "@web/core/utils/hooks";
+import { throttleForAnimation } from "../utils/timing";
+
+const { core, hooks } = owl;
+const { useComponent, useExternalListener, useRef, useSubEnv, onWillUnmount } = hooks;
+const { EventBus } = core;
 
 /**
  * @typedef {{
@@ -9,8 +13,6 @@ import { debounce, throttle } from "../utils/timing";
  *  container?: HTMLElement;
  *  margin?: number;
  *  position?: Position;
- *  directionFlipOrder?: DirectionFlipOrder;
- *  variantFlipOrder?: VariantFlipOrder;
  * }} Options
  *
  * @typedef {{
@@ -55,17 +57,16 @@ import { debounce, throttle } from "../utils/timing";
  * @typedef {{ className: string, top: number, left: number }} PositioningSolution
  */
 
-const { hooks } = owl;
-const { useComponent, useExternalListener, useRef } = hooks;
-
 const POPPER_CLASS = "o-popper-position";
+/** @type DirectionFlipOrder */
+const DIRECTION_FLIP_ORDER = { top: "tbrl", right: "rltb", bottom: "btrl", left: "lrbt" };
+/** @type VariantFlipOrder */
+const VARIANT_FLIP_ORDER = { start: "sme", middle: "mse", end: "ems" };
 
 /** @type {Options} */
 export const DEFAULTS = {
     margin: 0,
     position: "bottom",
-    directionFlipOrder: { top: "tbrl", right: "rltb", bottom: "btrl", left: "lrbt" },
-    variantFlipOrder: { start: "sme", middle: "mse", end: "ems" },
 };
 
 /**
@@ -82,17 +83,19 @@ export const DEFAULTS = {
  *  - a method returning style to apply to the popper for a given direction and variant
  */
 export function computePositioning(reference, popper, options) {
-    const { container, margin, position, directionFlipOrder, variantFlipOrder } = options;
+    const { container, margin, position } = options;
 
     // Retrieve directions and variants
     const [directionKey, variantKey = "middle"] = position.split("-");
-    const directions = directionFlipOrder[directionKey];
-    const variants = variantFlipOrder[variantKey];
+    const directions = DIRECTION_FLIP_ORDER[directionKey];
+    const variants = VARIANT_FLIP_ORDER[variantKey];
 
     // Boxes
     const popBox = popper.getBoundingClientRect();
     const refBox = reference.getBoundingClientRect();
     const contBox = container.getBoundingClientRect();
+
+    const containerIsHTMLNode = container === document.firstElementChild;
 
     // Compute positioning data
     /** @type {DirectionsData} */
@@ -122,12 +125,22 @@ export function computePositioning(reference, popper, options) {
             const [directionSize, variantSize] = vertical
                 ? [popBox.height + margin, popBox.width]
                 : [popBox.width, popBox.height + margin];
-            const [directionMin, directionMax] = vertical
+            let [directionMin, directionMax] = vertical
                 ? [contBox.top, contBox.bottom]
                 : [contBox.left, contBox.right];
-            const [variantMin, variantMax] = vertical
+            let [variantMin, variantMax] = vertical
                 ? [contBox.left, contBox.right]
                 : [contBox.top, contBox.bottom];
+
+            if (containerIsHTMLNode) {
+                if (vertical) {
+                    directionMin += container.scrollTop;
+                    directionMax += container.scrollTop;
+                } else {
+                    variantMin += container.scrollTop;
+                    variantMax += container.scrollTop;
+                }
+            }
 
             // Abort if outside container boundaries
             const directionOverflow =
@@ -212,6 +225,8 @@ function reposition(reference, popper, options) {
     popper.style.left = `${left}px`;
 }
 
+const POSITION_BUS = Symbol("position-bus");
+
 /**
  * Makes sure that the `popper` element is always
  * placed at `position` from the `reference` element.
@@ -227,13 +242,23 @@ export function usePosition(reference, options) {
     options = { ...DEFAULTS, ...options };
     const { popper } = options;
     const popperRef = popper ? useRef(popper) : useComponent();
-    const getReference = reference instanceof HTMLElement ? () => reference : reference;
+    const getReference = typeof reference === "function" ? reference : () => reference;
     const update = () => {
-        if (popperRef.el) {
-            reposition(getReference(), popperRef.el, options);
+        const ref = getReference();
+        if (popperRef.el && ref) {
+            reposition(ref, popperRef.el, options);
         }
     };
-    useEffect(update);
-    useExternalListener(document, "scroll", throttle(update, 50), { capture: true });
-    useExternalListener(window, "resize", debounce(update, 250));
+    const component = useComponent();
+    const bus = component.env[POSITION_BUS] || new EventBus();
+    bus.on("update", component, update);
+    onDestroyed(() => bus.off("update", component));
+    useEffect(() => bus.trigger("update"));
+    if (!(POSITION_BUS in component.env)) {
+        useSubEnv({ [POSITION_BUS]: bus });
+        const throttledUpdate = throttleForAnimation(() => bus.trigger("update"));
+        useExternalListener(document, "scroll", throttledUpdate, { capture: true });
+        useExternalListener(window, "resize", throttledUpdate);
+        onWillUnmount(throttledUpdate.cancel);
+    }
 }
